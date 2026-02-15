@@ -26,6 +26,5 @@ export const generateRandomNote = (): CreateNote => {
   return {
     title: `${title} (${new Date().toLocaleTimeString()})`,
     content,
-    status: "active",
   };
 };

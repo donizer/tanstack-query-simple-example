@@ -1,27 +1,36 @@
 import { z } from "zod";
 
-export const NoteDBSchema = z.object({
+export const NoteSharedSchema = z.object({
   id: z.string(),
   title: z.string().min(1, "Title is required"),
   content: z.string(),
-  createdAt: z.string(),
   status: z.enum(["active", "archived"]).default("active"),
 });
 
-export type NoteDB = z.infer<typeof NoteDBSchema>;
+export const NoteDBSchema = NoteSharedSchema.extend({
+  createdAt: z.string(),
+});
+export const NoteAppSchema = NoteSharedSchema.extend({
+  createdAt: z.string().transform((str) => new Date(str)),
+});
 
-export const CreateNoteSchema = NoteDBSchema.omit({ id: true, createdAt: true });
+export type NoteDB = z.input<typeof NoteDBSchema>;
+export type NoteApp = z.output<typeof NoteAppSchema>;
+
+export const CreateNoteSchema = NoteDBSchema.pick({ title: true, content: true });
 export type CreateNote = z.infer<typeof CreateNoteSchema>;
 
-export class NoteDTO {
+export class NoteDTO implements NoteApp {
   id: NoteDB["id"];
   title: NoteDB["title"];
   content: NoteDB["content"];
   createdAt: Date;
-  status: NoteDB["status"];
-  offline: boolean; // Flag to indicate if this is an optimistic note
+  status: NoteApp["status"];
+  offline: boolean;
 
-  constructor(note: NoteDB, options?: { offline?: boolean }) {
+  constructor(_note: NoteDB, options?: { offline?: boolean }) {
+    const note = NoteAppSchema.parse(_note);
+
     this.id = note.id;
     this.title = note.title;
     this.content = note.content;
@@ -30,17 +39,22 @@ export class NoteDTO {
     this.offline = options?.offline ?? false;
   }
 
-  private statusTitleMap: Record<NoteDB["status"], string> = {
-    active: "Active",
-    archived: "Archived",
-  };
-
   get formattedDate() {
     return this.createdAt.toLocaleString();
   }
 
   get formattedStatus() {
-    return this.statusTitleMap[this.status];
+    switch (this.status) {
+      case "active": {
+        return "Active";
+      }
+      case "archived": {
+        return "Archived";
+      }
+      default: {
+        return "Unknown";
+      }
+    }
   }
 }
 export const NoteDTOSchema = NoteDBSchema.transform((note) => new NoteDTO(note));
