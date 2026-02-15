@@ -24,9 +24,10 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
-    "baseUrl": "../..",
+    "baseUrl": ".",
     "paths": {
-      "@demo/shared": ["./packages/shared/index.ts"]
+      "@demo/shared": ["./packages/shared/index.ts"],
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"]
