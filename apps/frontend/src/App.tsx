@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NoteSchema, type Note, type CreateNote } from "@demo/shared";
 import { z } from "zod";
 import { generateRandomNote } from "./utils/noteGenerator";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const API_URL = "http://localhost:3001/api/notes";
 
@@ -27,28 +32,13 @@ const deleteNote = async (id: string): Promise<void> => {
 function App() {
   const queryClient = useQueryClient();
 
-  // 1. Query: Fetching notes
-  const {
-    data: notes,
-    isLoading,
-    isFetching,
-  } = useQuery({
+  const notesQuery = useQuery({
     queryKey: ["notes"],
     queryFn: fetchNotes,
   });
 
-  // 2. Mutation: Creating a note
   const createMutation = useMutation({
     mutationFn: createNote,
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
-    },
-  });
-
-  // 3. Mutation: Deleting a note
-  const deleteMutation = useMutation({
-    mutationFn: deleteNote,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
@@ -59,51 +49,113 @@ function App() {
   };
 
   return (
-    <div>
-      <div className='header'>
-        <h1>Note Taking App</h1>
-        {isFetching && <span className='loading-indicator'>Syncing...</span>}
+    <div className='container mx-auto py-10 space-y-8'>
+      <div className='flex items-center justify-between'>
+        <h1 className='text-4xl font-bold tracking-tight'>Note Taking App</h1>
+        {notesQuery.isFetching && (
+          <Badge
+            variant='secondary'
+            className='flex items-center gap-2'
+          >
+            <Spinner className='h-3 w-3' />
+            Syncing...
+          </Badge>
+        )}
       </div>
 
-      <div className='actions'>
-        <button
+      <div className='flex gap-4'>
+        <Button
           onClick={handleGenerateNote}
           disabled={createMutation.isPending}
         >
-          {createMutation.isPending ? "Generating..." : "Generate Random Note"}
-        </button>
-        <button onClick={() => queryClient.invalidateQueries({ queryKey: ["notes"] })}>Refresh Cache</button>
+          {createMutation.isPending ? (
+            <>
+              <Spinner className='mr-2 h-4 w-4' />
+              Generating...
+            </>
+          ) : (
+            "Generate Random Note"
+          )}
+        </Button>
+        <Button
+          variant='outline'
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["notes"] })}
+        >
+          Refresh Cache
+        </Button>
       </div>
 
-      {isLoading ? (
-        <p>Loading notes...</p>
-      ) : (
-        <div className='note-grid'>
-          {notes?.map((note) => (
-            <div
-              key={note.id}
-              className='note-card'
+      {notesQuery.isLoading ? (
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+          {[...Array(6)].map((_, i) => (
+            <Card
+              key={i}
+              className='flex flex-col h-50'
             >
-              <div>
-                <h3>{note.title}</h3>
-                <p>{note.content}</p>
-                <div className='date'>{new Date(note.createdAt).toLocaleString()}</div>
-              </div>
-              <button
-                className='btn-delete'
-                onClick={() => deleteMutation.mutate(note.id)}
-                disabled={deleteMutation.isPending}
-              >
-                Delete
-              </button>
-            </div>
+              <CardHeader>
+                <Skeleton className='h-6 w-2/3' />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className='h-4 w-full mb-2' />
+                <Skeleton className='h-4 w-5/6' />
+              </CardContent>
+              <CardFooter className='mt-auto'>
+                <Skeleton className='h-9 w-20' />
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+          {notesQuery.data?.map((note) => (
+            <CardItem
+              key={note.id}
+              note={note}
+            />
           ))}
         </div>
       )}
 
-      {notes?.length === 0 && <p>No notes found. Click generate to start!</p>}
+      {notesQuery.data?.length === 0 && !notesQuery.isLoading && (
+        <div className='text-center py-20 border-2 border-dashed rounded-lg'>
+          <p className='text-muted-foreground text-lg'>No notes found. Click generate to start!</p>
+        </div>
+      )}
     </div>
   );
 }
 
 export default App;
+
+const CardItem: React.FC<{ note: Note }> = ({ note }) => {
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteNote,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+  });
+
+  return (
+    <Card className='flex flex-col'>
+      <CardHeader>
+        <CardTitle className='line-clamp-1'>{note.title}</CardTitle>
+        <div className='text-xs text-muted-foreground'>{new Date(note.createdAt).toLocaleString()}</div>
+      </CardHeader>
+      <CardContent className='grow'>
+        <p className='text-sm text-balance'>{note.content}</p>
+      </CardContent>
+      <CardFooter className='pt-0'>
+        <Button
+          variant='destructive'
+          size='sm'
+          onClick={() => deleteMutation.mutate(note.id)}
+          disabled={deleteMutation.isPending}
+        >
+          {deleteMutation.isPending ? <Spinner className='h-4 w-4' /> : "Delete"}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
