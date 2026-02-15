@@ -1,29 +1,31 @@
 import express from "express";
 import cors from "cors";
-import { CreateNoteSchema, Note } from "@demo/shared";
+import { CreateNoteSchema, NoteDB } from "@demo/shared";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Mock Database State
-let NOTES: Note[] = [
+let NOTES: NoteDB[] = [
   {
     id: "1",
     title: "Welcome Note",
     content: "This is your first note in the TanStack Query showcase!",
     createdAt: new Date().toISOString(),
+    status: "active",
   },
   {
     id: "2",
     title: "Learning Query",
     content: "Remember to check out the DevTools for cache inspection.",
     createdAt: new Date().toISOString(),
+    status: "active",
   },
 ];
 
 // Artificial delay to showcase loading states
-const DELAY = 600;
+const DELAY = 650;
 const sleep = () => new Promise((resolve) => setTimeout(resolve, DELAY));
 
 app.get("/api/notes", async (req, res) => {
@@ -37,7 +39,7 @@ app.post("/api/notes", async (req, res) => {
   if (!result.success) {
     return res.status(400).json(result.error);
   }
-  const newNote: Note = {
+  const newNote: NoteDB = {
     ...result.data,
     id: Math.random().toString(36).substring(7),
     createdAt: new Date().toISOString(),

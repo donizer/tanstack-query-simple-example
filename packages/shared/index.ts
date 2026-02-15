@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const NoteSchema = z.object({
+export const NoteDBSchema = z.object({
   id: z.string(),
   title: z.string().min(1, "Title is required"),
   content: z.string(),
@@ -8,37 +8,37 @@ export const NoteSchema = z.object({
   status: z.enum(["active", "archived"]).default("active"),
 });
 
-export type Note = z.infer<typeof NoteSchema>;
+export type NoteDB = z.infer<typeof NoteDBSchema>;
 
-export const CreateNoteSchema = NoteSchema.omit({ id: true, createdAt: true });
+export const CreateNoteSchema = NoteDBSchema.omit({ id: true, createdAt: true });
 export type CreateNote = z.infer<typeof CreateNoteSchema>;
 
-export class NoteDTO implements Note {
-  id: Note["id"];
-  title: Note["title"];
-  content: Note["content"];
-  createdAt: Note["createdAt"];
-  status: Note["status"];
+export class NoteDTO {
+  id: NoteDB["id"];
+  title: NoteDB["title"];
+  content: NoteDB["content"];
+  createdAt: Date;
+  status: NoteDB["status"];
 
-  constructor(note: Note) {
+  constructor(note: NoteDB) {
     this.id = note.id;
     this.title = note.title;
     this.content = note.content;
-    this.createdAt = note.createdAt;
+    this.createdAt = new Date(note.createdAt);
     this.status = note.status;
   }
 
-  private statusTitleMap: Record<Note["status"], string> = {
+  private statusTitleMap: Record<NoteDB["status"], string> = {
     active: "Active",
     archived: "Archived",
   };
 
   get formattedDate() {
-    return new Date(this.createdAt).toLocaleString();
+    return this.createdAt.toLocaleString();
   }
 
   get formattedStatus() {
     return this.statusTitleMap[this.status];
   }
 }
-export const NoteDTOSchema = NoteSchema.transform((note) => new NoteDTO(note));
+export const NoteDTOSchema = NoteDBSchema.transform((note) => new NoteDTO(note));
