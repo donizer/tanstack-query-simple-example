@@ -7,6 +7,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Eye } from "lucide-react";
 
 const API_URL = "http://localhost:3001/api/notes";
 
@@ -138,15 +147,34 @@ const CardItem: React.FC<{ note: Note }> = ({ note }) => {
   });
 
   return (
-    <Card className='flex flex-col'>
+    <Card className='flex flex-col group transition-all hover:shadow-md'>
       <CardHeader>
         <CardTitle className='line-clamp-1'>{note.title}</CardTitle>
         <div className='text-xs text-muted-foreground'>{new Date(note.createdAt).toLocaleString()}</div>
       </CardHeader>
       <CardContent className='grow'>
-        <p className='text-sm text-balance'>{note.content}</p>
+        <p className='text-sm text-balance line-clamp-3'>{note.content}</p>
       </CardContent>
-      <CardFooter className='pt-0'>
+      <CardFooter className='pt-0 gap-2'>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+              variant='outline'
+              size='sm'
+              className='flex items-center gap-2'
+            >
+              <Eye className='h-4 w-4' />
+              View
+            </Button>
+          </DialogTrigger>
+          <DialogContent className='sm:max-w-150'>
+            <DialogHeader>
+              <DialogTitle className='text-2xl font-bold'>{note.title}</DialogTitle>
+              <DialogDescription>Created on {new Date(note.createdAt).toLocaleString()}</DialogDescription>
+            </DialogHeader>
+            <div className='py-6 text-lg whitespace-pre-wrap leading-relaxed border-t mt-4'>{note.content}</div>
+          </DialogContent>
+        </Dialog>
         <Button
           variant='destructive'
           size='sm'
