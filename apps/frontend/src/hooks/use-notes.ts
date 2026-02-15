@@ -1,6 +1,127 @@
-import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { InfiniteData, QueryKey } from "@tanstack/react-query";
 import { NoteDTO } from "@demo/shared";
-import { fetchNotes, fetchNotesPage, createNote, deleteNote, noteKeys } from "../lib/api";
+import { createNote, deleteNote, fetchNotes, fetchNotesPage, noteKeys } from "../lib/api";
+import type { PaginatedNotesResponse } from "../lib/api";
+
+type InfiniteNotesData = InfiniteData<PaginatedNotesResponse, number>;
+
+type MutationContext = {
+  previousAll?: NoteDTO[];
+  previousInfinite: Array<[QueryKey, InfiniteNotesData | undefined]>;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+
+const isInfiniteListQueryKey = (queryKey: QueryKey) => {
+  const [group, list, mode, params] = queryKey;
+
+  return group === "notes" && list === "list" && mode === "infinite" && isRecord(params) && "limit" in params;
+};
+
+const withPaginationMeta = (pageData: PaginatedNotesResponse, total: number): PaginatedNotesResponse => {
+  const totalPages = Math.max(1, Math.ceil(total / pageData.pagination.limit));
+
+  return {
+    ...pageData,
+    pagination: {
+      ...pageData.pagination,
+      total,
+      totalPages,
+      hasNextPage: pageData.pagination.page < totalPages,
+      hasPreviousPage: pageData.pagination.page > 1,
+    },
+  };
+};
+
+const addOptimisticNoteToPage = (pageData: PaginatedNotesResponse, note: NoteDTO): PaginatedNotesResponse => {
+  const total = pageData.pagination.total + 1;
+  const nextPage =
+    pageData.pagination.page === 1 ? [note, ...pageData.data].slice(0, pageData.pagination.limit) : pageData.data;
+
+  return {
+    ...withPaginationMeta(pageData, total),
+    data: nextPage,
+  };
+};
+
+const removeOptimisticNoteFromPage = (pageData: PaginatedNotesResponse, id: string): PaginatedNotesResponse => {
+  const total = Math.max(0, pageData.pagination.total - 1);
+
+  return {
+    ...withPaginationMeta(pageData, total),
+    data: pageData.data.filter((note) => note.id !== id),
+  };
+};
+
+const addOptimisticNoteToInfinite = (data: InfiniteNotesData, note: NoteDTO): InfiniteNotesData => {
+  const pages = data.pages.map((page, index) =>
+    index === 0 ? addOptimisticNoteToPage(page, note) : withPaginationMeta(page, page.pagination.total + 1),
+  );
+
+  return {
+    ...data,
+    pages,
+  };
+};
+
+const removeOptimisticNoteFromInfinite = (data: InfiniteNotesData, id: string): InfiniteNotesData => {
+  const pages = data.pages.map((page) => removeOptimisticNoteFromPage(page, id));
+
+  return {
+    ...data,
+    pages,
+  };
+};
+
+const buildOptimisticNote = (newNote: { title: string; content: string }) =>
+  new NoteDTO(
+    {
+      ...newNote,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      status: "active",
+    },
+    {
+      offline: true,
+    },
+  );
+
+const applyCreateOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClient>, note: NoteDTO) => {
+  queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => [note, ...previous]);
+
+  queryClient.setQueriesData<InfiniteNotesData>(
+    { predicate: (query) => isInfiniteListQueryKey(query.queryKey) },
+    (previous) => (previous ? addOptimisticNoteToInfinite(previous, note) : previous),
+  );
+};
+
+const applyDeleteOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClient>, id: string) => {
+  queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => previous.filter((note) => note.id !== id));
+
+  queryClient.setQueriesData<InfiniteNotesData>(
+    { predicate: (query) => isInfiniteListQueryKey(query.queryKey) },
+    (previous) => (previous ? removeOptimisticNoteFromInfinite(previous, id) : previous),
+  );
+};
+
+const rollbackFromContext = (queryClient: ReturnType<typeof useQueryClient>, context?: MutationContext) => {
+  if (!context) {
+    return;
+  }
+
+  queryClient.setQueryData(noteKeys.all, context.previousAll);
+  context.previousInfinite.forEach(([key, data]) => {
+    queryClient.setQueryData(key, data);
+  });
+};
+
+const snapshotMutationContext = (queryClient: ReturnType<typeof useQueryClient>): MutationContext => ({
+  previousAll: queryClient.getQueryData<NoteDTO[]>(noteKeys.all),
+  previousInfinite: queryClient.getQueriesData<InfiniteNotesData>({
+    predicate: (query) => isInfiniteListQueryKey(query.queryKey),
+  }),
+});
 
 export function useNotes() {
   return useQuery({
@@ -39,29 +160,15 @@ export function useCreateNote() {
     mutationFn: createNote,
     onMutate: async (newNote) => {
       await queryClient.cancelQueries({ queryKey: noteKeys.all });
-      const previousNotes = queryClient.getQueryData<NoteDTO[]>(noteKeys.all);
 
-      if (previousNotes) {
-        const optimisticNote = new NoteDTO(
-          {
-            ...newNote,
-            id: `temp-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            offline: true,
-          },
-        );
+      const context = snapshotMutationContext(queryClient);
+      const optimisticNote = buildOptimisticNote(newNote);
+      applyCreateOptimisticUpdate(queryClient, optimisticNote);
 
-        queryClient.setQueryData<NoteDTO[]>(noteKeys.all, [optimisticNote, ...previousNotes]);
-      }
-
-      return { previousNotes };
+      return context;
     },
-    onError: (_err, _newNote, context) => {
-      if (context?.previousNotes) {
-        queryClient.setQueryData(noteKeys.all, context.previousNotes);
-      }
+    onError: (_error, _newNote, context) => {
+      rollbackFromContext(queryClient, context);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.all });
@@ -76,21 +183,14 @@ export function useDeleteNote() {
     mutationFn: deleteNote,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: noteKeys.all });
-      const previousNotes = queryClient.getQueryData<NoteDTO[]>(noteKeys.all);
 
-      if (previousNotes) {
-        queryClient.setQueryData<NoteDTO[]>(
-          noteKeys.all,
-          previousNotes.filter((note) => note.id !== id),
-        );
-      }
+      const context = snapshotMutationContext(queryClient);
+      applyDeleteOptimisticUpdate(queryClient, id);
 
-      return { previousNotes };
+      return context;
     },
-    onError: (_err, _id, context) => {
-      if (context?.previousNotes) {
-        queryClient.setQueryData(noteKeys.all, context.previousNotes);
-      }
+    onError: (_error, _id, context) => {
+      rollbackFromContext(queryClient, context);
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.all });

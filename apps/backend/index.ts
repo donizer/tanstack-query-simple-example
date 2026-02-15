@@ -25,7 +25,7 @@ let NOTES: NoteDB[] = [
 ];
 
 // Artificial delay to showcase loading states
-const DELAY = 650;
+const DELAY = 150;
 const sleep = () => new Promise((resolve) => setTimeout(resolve, DELAY));
 
 const MAX_PAGE_SIZE = 100;
