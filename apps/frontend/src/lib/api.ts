@@ -1,4 +1,4 @@
-import { NoteDTOSchema, type CreateNote } from "@demo/shared";
+import { NoteDTOSchema, type CreateNote, type UpdateNote } from "@demo/shared";
 import { z } from "zod";
 
 const API_URL = "http://localhost:3001/api/notes";
@@ -59,6 +59,13 @@ export const fetchNotesMeta = async () => {
   return NotesMetaSchema.parse(data);
 };
 
+export const fetchNoteById = async (id: string) => {
+  const res = await fetch(`${API_URL}/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch note");
+
+  return NoteDTOSchema.parse(await res.json());
+};
+
 export const createNote = async (note: CreateNote) => {
   const res = await fetch(API_URL, {
     method: "POST",
@@ -72,4 +79,15 @@ export const createNote = async (note: CreateNote) => {
 export const deleteNote = async (id: string) => {
   const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
   if (!res.ok) throw new Error("Failed to delete note");
+};
+
+export const updateNote = async (id: string, note: UpdateNote) => {
+  const res = await fetch(`${API_URL}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(note),
+  });
+
+  if (!res.ok) throw new Error("Failed to update note");
+  return NoteDTOSchema.parse(await res.json());
 };

@@ -1,7 +1,16 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
-import { NoteDTO } from "@demo/shared";
-import { createNote, deleteNote, fetchNotes, fetchNotesMeta, fetchNotesPage, noteKeys } from "../lib/api";
+import { type UpdateNote as UpdateNoteInput, NoteDTO } from "@demo/shared";
+import {
+  createNote,
+  deleteNote,
+  fetchNoteById,
+  fetchNotes,
+  fetchNotesMeta,
+  fetchNotesPage,
+  noteKeys,
+  updateNote,
+} from "../lib/api";
 import type { PaginatedNotesResponse } from "../lib/api";
 
 type InfiniteNotesData = InfiniteData<PaginatedNotesResponse, number>;
@@ -9,6 +18,7 @@ type InfiniteNotesData = InfiniteData<PaginatedNotesResponse, number>;
 type MutationContext = {
   previousAll?: NoteDTO[];
   previousInfinite: Array<[QueryKey, InfiniteNotesData | undefined]>;
+  previousDetail?: NoteDTO;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -103,6 +113,66 @@ const snapshotMutationContext = (queryClient: ReturnType<typeof useQueryClient>)
   }),
 });
 
+const updateNoteInList = (notes: NoteDTO[], id: string, patch: UpdateNoteInput) =>
+  notes.map((note) =>
+    note.id === id
+      ? new NoteDTO(
+          {
+            id: note.id,
+            title: patch.title,
+            content: patch.content,
+            status: note.status,
+            createdAt: note.createdAt.toISOString(),
+          },
+          { offline: note.offline },
+        )
+      : note,
+  );
+
+const applyUpdateOptimisticUpdate = (
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: string,
+  patch: UpdateNoteInput,
+) => {
+  queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => updateNoteInList(previous, id, patch));
+
+  queryClient.setQueriesData<InfiniteNotesData>(
+    { predicate: (query) => isInfiniteListQueryKey(query.queryKey) },
+    (previous) => {
+      if (!previous) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        pages: previous.pages.map((page) => ({
+          ...page,
+          data: updateNoteInList(page.data, id, patch),
+        })),
+      };
+    },
+  );
+
+  queryClient.setQueryData<NoteDTO>(noteKeys.detail(id), (previous) => {
+    if (!previous) {
+      return previous;
+    }
+
+    return new NoteDTO(
+      {
+        id: previous.id,
+        title: patch.title,
+        content: patch.content,
+        status: previous.status,
+        createdAt: previous.createdAt.toISOString(),
+      },
+      {
+        offline: previous.offline,
+      },
+    );
+  });
+};
+
 const invalidateAllNoteQueries = async (queryClient: ReturnType<typeof useQueryClient>) => {
   await Promise.all([
     queryClient.invalidateQueries({
@@ -120,6 +190,15 @@ export function useNotes() {
   return useQuery({
     queryKey: noteKeys.all,
     queryFn: fetchNotes,
+  });
+}
+
+export function useNote(id: string, placeholder?: NoteDTO) {
+  return useQuery({
+    queryKey: noteKeys.detail(id),
+    queryFn: () => fetchNoteById(id),
+    enabled: Boolean(id),
+    placeholderData: placeholder,
   });
 }
 
@@ -194,6 +273,38 @@ export function useDeleteNote() {
     },
     onSettled: async () => {
       await invalidateAllNoteQueries(queryClient);
+    },
+  });
+}
+
+export function useUpdateNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note: UpdateNoteInput }) => updateNote(id, note),
+    onMutate: async ({ id, note }) => {
+      await queryClient.cancelQueries({ queryKey: noteKeys.all });
+
+      const context: MutationContext = {
+        ...snapshotMutationContext(queryClient),
+        previousDetail: queryClient.getQueryData<NoteDTO>(noteKeys.detail(id)),
+      };
+
+      applyUpdateOptimisticUpdate(queryClient, id, note);
+      return context;
+    },
+    onError: (_error, variables, context) => {
+      rollbackFromContext(queryClient, context);
+
+      if (context?.previousDetail) {
+        queryClient.setQueryData(noteKeys.detail(variables.id), context.previousDetail);
+      }
+    },
+    onSettled: async (_data, _error, variables) => {
+      await Promise.all([
+        invalidateAllNoteQueries(queryClient),
+        queryClient.invalidateQueries({ queryKey: noteKeys.detail(variables.id), refetchType: "active" }),
+      ]);
     },
   });
 }

@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { CreateNoteSchema, NoteDB } from "@demo/shared";
+import { CreateNoteSchema, NoteDB, UpdateNoteSchema } from "@demo/shared";
 
 const app = express();
 app.use(cors());
@@ -90,6 +90,17 @@ app.get("/api/notes", async (req, res) => {
   });
 });
 
+app.get("/api/notes/:id", async (req, res) => {
+  await sleep();
+
+  const note = NOTES.find((item) => item.id === req.params.id);
+  if (!note) {
+    return res.status(404).json({ message: "Note not found" });
+  }
+
+  return res.json(note);
+});
+
 app.post("/api/notes", async (req, res) => {
   await sleep();
   const result = CreateNoteSchema.safeParse(req.body);
@@ -110,6 +121,28 @@ app.delete("/api/notes/:id", async (req, res) => {
   const { id } = req.params;
   NOTES = NOTES.filter((n) => n.id !== id);
   res.status(204).send();
+});
+
+app.patch("/api/notes/:id", async (req, res) => {
+  await sleep();
+
+  const result = UpdateNoteSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json(result.error);
+  }
+
+  const noteIndex = NOTES.findIndex((item) => item.id === req.params.id);
+  if (noteIndex === -1) {
+    return res.status(404).json({ message: "Note not found" });
+  }
+
+  const updatedNote: NoteDB = {
+    ...NOTES[noteIndex],
+    ...result.data,
+  };
+
+  NOTES[noteIndex] = updatedNote;
+  return res.json(updatedNote);
 });
 
 app.listen(3001, () => console.log("Backend on http://localhost:3001"));

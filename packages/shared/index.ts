@@ -20,6 +20,9 @@ export type NoteApp = z.output<typeof NoteAppSchema>;
 export const CreateNoteSchema = NoteDBSchema.pick({ title: true, content: true });
 export type CreateNote = z.infer<typeof CreateNoteSchema>;
 
+export const UpdateNoteSchema = NoteDBSchema.pick({ title: true, content: true });
+export type UpdateNote = z.infer<typeof UpdateNoteSchema>;
+
 export class NoteDTO implements NoteApp {
   id: NoteDB["id"];
   title: NoteDB["title"];

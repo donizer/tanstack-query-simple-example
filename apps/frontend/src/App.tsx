@@ -20,6 +20,7 @@ import { useInfiniteNotes, useNotes, useNotesMeta, useCreateNote, usePaginatedNo
 import { NoteCard } from "./components/note-card";
 import { noteKeys } from "./lib/api";
 import { NoteDTO } from "@demo/shared";
+import { NoteEditorPage } from "./components/note-editor-page";
 
 const PAGE_SIZE = 6;
 
@@ -233,8 +234,9 @@ function InfiniteScrollTab() {
   );
 }
 
-function App() {
+function DemoApp() {
   const location = useLocation();
+
   const queryClient = useQueryClient();
   const notesQuery = useNotes();
   const createMutation = useCreateNote();
@@ -333,6 +335,25 @@ function App() {
         />
       </Routes>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route
+        path='/editor'
+        element={<NoteEditorPage />}
+      />
+      <Route
+        path='/editor/:id'
+        element={<NoteEditorPage />}
+      />
+      <Route
+        path='*'
+        element={<DemoApp />}
+      />
+    </Routes>
   );
 }
 
