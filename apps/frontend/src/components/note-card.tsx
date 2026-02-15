@@ -51,11 +51,12 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note }) => {
                 <DialogTitle className='text-2xl font-bold'>{note.title}</DialogTitle>
                 <DialogDescription>Created on {note.formattedDate}</DialogDescription>
               </div>
+
               <Button
                 variant='destructive'
                 size='sm'
                 onClick={() => deleteMutation.mutate(note.id)}
-                disabled={deleteMutation.isPending}
+                disabled={deleteMutation.isPending || note.offline}
                 className='mr-8'
               >
                 {deleteMutation.isPending ? <Spinner className='h-4 w-4' /> : "Delete"}
@@ -70,7 +71,7 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note }) => {
           variant='destructive'
           size='sm'
           onClick={() => deleteMutation.mutate(note.id)}
-          disabled={deleteMutation.isPending}
+          disabled={deleteMutation.isPending || note.offline}
         >
           {deleteMutation.isPending ? <Spinner className='h-4 w-4' /> : "Delete"}
         </Button>

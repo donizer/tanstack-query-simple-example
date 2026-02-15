@@ -19,13 +19,15 @@ export class NoteDTO {
   content: NoteDB["content"];
   createdAt: Date;
   status: NoteDB["status"];
+  offline: boolean; // Flag to indicate if this is an optimistic note
 
-  constructor(note: NoteDB) {
+  constructor(note: NoteDB, options?: { offline?: boolean }) {
     this.id = note.id;
     this.title = note.title;
     this.content = note.content;
     this.createdAt = new Date(note.createdAt);
     this.status = note.status;
+    this.offline = options?.offline ?? false;
   }
 
   private statusTitleMap: Record<NoteDB["status"], string> = {

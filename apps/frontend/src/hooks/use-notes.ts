@@ -19,11 +19,16 @@ export function useCreateNote() {
       const previousNotes = queryClient.getQueryData<NoteDTO[]>(noteKeys.all);
 
       if (previousNotes) {
-        const optimisticNote = new NoteDTO({
-          ...newNote,
-          id: `temp-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-        });
+        const optimisticNote = new NoteDTO(
+          {
+            ...newNote,
+            id: `temp-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+          },
+          {
+            offline: true,
+          },
+        );
 
         queryClient.setQueryData<NoteDTO[]>(noteKeys.all, [optimisticNote, ...previousNotes]);
       }
