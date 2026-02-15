@@ -45,6 +45,14 @@ const parsePositiveInt = (value: unknown) => {
   return parsed;
 };
 
+app.get("/api/notes/meta", async (_req, res) => {
+  await sleep();
+
+  res.json({
+    total: NOTES.length,
+  });
+});
+
 app.get("/api/notes", async (req, res) => {
   await sleep();
 
@@ -76,8 +84,6 @@ app.get("/api/notes", async (req, res) => {
     pagination: {
       page,
       limit,
-      total,
-      totalPages,
       hasNextPage: page < totalPages,
       hasPreviousPage: page > 1,
     },

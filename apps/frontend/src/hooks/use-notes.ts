@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
 import { NoteDTO } from "@demo/shared";
-import { createNote, deleteNote, fetchNotes, fetchNotesPage, noteKeys } from "../lib/api";
+import { createNote, deleteNote, fetchNotes, fetchNotesMeta, fetchNotesPage, noteKeys } from "../lib/api";
 import type { PaginatedNotesResponse } from "../lib/api";
 
 type InfiniteNotesData = InfiniteData<PaginatedNotesResponse, number>;
@@ -19,45 +19,25 @@ const isInfiniteListQueryKey = (queryKey: QueryKey) => {
   return group === "notes" && list === "list" && mode === "infinite" && isRecord(params) && "limit" in params;
 };
 
-const withPaginationMeta = (pageData: PaginatedNotesResponse, total: number): PaginatedNotesResponse => {
-  const totalPages = Math.max(1, Math.ceil(total / pageData.pagination.limit));
-
-  return {
-    ...pageData,
-    pagination: {
-      ...pageData.pagination,
-      total,
-      totalPages,
-      hasNextPage: pageData.pagination.page < totalPages,
-      hasPreviousPage: pageData.pagination.page > 1,
-    },
-  };
-};
-
 const addOptimisticNoteToPage = (pageData: PaginatedNotesResponse, note: NoteDTO): PaginatedNotesResponse => {
-  const total = pageData.pagination.total + 1;
   const nextPage =
     pageData.pagination.page === 1 ? [note, ...pageData.data].slice(0, pageData.pagination.limit) : pageData.data;
 
   return {
-    ...withPaginationMeta(pageData, total),
+    ...pageData,
     data: nextPage,
   };
 };
 
 const removeOptimisticNoteFromPage = (pageData: PaginatedNotesResponse, id: string): PaginatedNotesResponse => {
-  const total = Math.max(0, pageData.pagination.total - 1);
-
   return {
-    ...withPaginationMeta(pageData, total),
+    ...pageData,
     data: pageData.data.filter((note) => note.id !== id),
   };
 };
 
 const addOptimisticNoteToInfinite = (data: InfiniteNotesData, note: NoteDTO): InfiniteNotesData => {
-  const pages = data.pages.map((page, index) =>
-    index === 0 ? addOptimisticNoteToPage(page, note) : withPaginationMeta(page, page.pagination.total + 1),
-  );
+  const pages = data.pages.map((page, index) => (index === 0 ? addOptimisticNoteToPage(page, note) : page));
 
   return {
     ...data,
@@ -123,10 +103,30 @@ const snapshotMutationContext = (queryClient: ReturnType<typeof useQueryClient>)
   }),
 });
 
+const invalidateAllNoteQueries = async (queryClient: ReturnType<typeof useQueryClient>) => {
+  await Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: noteKeys.all,
+      refetchType: "active",
+    }),
+    queryClient.invalidateQueries({
+      queryKey: noteKeys.meta(),
+      refetchType: "active",
+    }),
+  ]);
+};
+
 export function useNotes() {
   return useQuery({
     queryKey: noteKeys.all,
     queryFn: fetchNotes,
+  });
+}
+
+export function useNotesMeta() {
+  return useQuery({
+    queryKey: noteKeys.meta(),
+    queryFn: fetchNotesMeta,
   });
 }
 
@@ -170,8 +170,8 @@ export function useCreateNote() {
     onError: (_error, _newNote, context) => {
       rollbackFromContext(queryClient, context);
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.all });
+    onSettled: async () => {
+      await invalidateAllNoteQueries(queryClient);
     },
   });
 }
@@ -192,8 +192,8 @@ export function useDeleteNote() {
     onError: (_error, _id, context) => {
       rollbackFromContext(queryClient, context);
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.all });
+    onSettled: async () => {
+      await invalidateAllNoteQueries(queryClient);
     },
   });
 }

@@ -5,6 +5,7 @@ const API_URL = "http://localhost:3001/api/notes";
 
 export const noteKeys = {
   all: ["notes"] as const,
+  meta: () => [...noteKeys.all, "meta"] as const,
   lists: () => [...noteKeys.all, "list"] as const,
   list: (filters: string) => [...noteKeys.lists(), { filters }] as const,
   paginatedList: (page: number, limit: number) => [...noteKeys.lists(), { page, limit }] as const,
@@ -13,19 +14,22 @@ export const noteKeys = {
   detail: (id: string) => [...noteKeys.details(), id] as const,
 };
 
+const NotesMetaSchema = z.object({
+  total: z.number().int().nonnegative(),
+});
+
 const PaginatedNotesResponseSchema = z.object({
   data: NoteDTOSchema.array(),
   pagination: z.object({
     page: z.number().int().positive(),
     limit: z.number().int().positive(),
-    total: z.number().int().nonnegative(),
-    totalPages: z.number().int().positive(),
     hasNextPage: z.boolean(),
     hasPreviousPage: z.boolean(),
   }),
 });
 
 export type PaginatedNotesResponse = z.infer<typeof PaginatedNotesResponseSchema>;
+export type NotesMeta = z.infer<typeof NotesMetaSchema>;
 
 export const fetchNotes = async () => {
   const res = await fetch(API_URL);
@@ -45,6 +49,14 @@ export const fetchNotesPage = async (page: number, limit: number) => {
 
   const data = await res.json();
   return PaginatedNotesResponseSchema.parse(data);
+};
+
+export const fetchNotesMeta = async () => {
+  const res = await fetch(`${API_URL}/meta`);
+  if (!res.ok) throw new Error("Failed to fetch notes metadata");
+
+  const data = await res.json();
+  return NotesMetaSchema.parse(data);
 };
 
 export const createNote = async (note: CreateNote) => {

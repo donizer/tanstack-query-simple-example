@@ -16,7 +16,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useInfiniteNotes, useNotes, useCreateNote, usePaginatedNotes } from "./hooks/use-notes";
+import { useInfiniteNotes, useNotes, useNotesMeta, useCreateNote, usePaginatedNotes } from "./hooks/use-notes";
 import { NoteCard } from "./components/note-card";
 import { noteKeys } from "./lib/api";
 import { NoteDTO } from "@demo/shared";
@@ -89,11 +89,20 @@ function PaginationTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const pageFromUrl = Number(searchParams.get("page") ?? 1);
   const currentPage = Number.isFinite(pageFromUrl) ? Math.max(1, pageFromUrl) : 1;
+  const notesMetaQuery = useNotesMeta();
   const paginatedNotesQuery = usePaginatedNotes(currentPage, PAGE_SIZE);
 
-  const totalItems = paginatedNotesQuery.data?.pagination.total ?? 0;
-  const totalPages = paginatedNotesQuery.data?.pagination.totalPages ?? 1;
+  const totalItems = notesMetaQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const paginatedNotes = paginatedNotesQuery.data?.data;
+
+  useEffect(() => {
+    if (currentPage <= totalPages) {
+      return;
+    }
+
+    setSearchParams(totalPages > 1 ? { page: String(totalPages) } : {});
+  }, [currentPage, totalPages, setSearchParams]);
 
   const setPage = (page: number) => {
     const nextPage = Math.min(Math.max(1, page), totalPages);
@@ -108,7 +117,7 @@ function PaginationTab() {
         emptyMessage='No notes found for this page.'
       />
 
-      {!paginatedNotesQuery.isLoading && totalItems > 0 && (
+      {!paginatedNotesQuery.isLoading && !notesMetaQuery.isLoading && totalItems > 0 && (
         <Pagination>
           <PaginationContent>
             <PaginationItem>
