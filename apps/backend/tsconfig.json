@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "types": ["node"],
+    "baseUrl": "../..",
+    "paths": {
+      "@demo/shared": ["./packages/shared/index.ts"]
+    }
+  },
+  "include": ["index.ts"],
+  "exclude": ["node_modules", "dist"]
+}
