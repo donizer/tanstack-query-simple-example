@@ -1,18 +1,171 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { generateRandomNote } from "./utils/noteGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNotes, useCreateNote } from "./hooks/use-notes";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useNotes, useCreateNote, usePaginatedNotes } from "./hooks/use-notes";
 import { NoteCard } from "./components/note-card";
 import { noteKeys } from "./lib/api";
+import { NoteDTO } from "@demo/shared";
+
+const PAGE_SIZE = 6;
+
+type NotesGridProps = {
+  isLoading: boolean;
+  notes: NoteDTO[] | undefined;
+  emptyMessage?: string;
+};
+
+function NotesGrid({ isLoading, notes, emptyMessage = "No notes found. Click generate to start!" }: NotesGridProps) {
+  if (isLoading) {
+    return (
+      <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
+        {[...Array(6)].map((_, index) => (
+          <Card
+            key={index}
+            className='flex h-50 flex-col'
+          >
+            <CardHeader>
+              <Skeleton className='h-6 w-2/3' />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className='mb-2 h-4 w-full' />
+              <Skeleton className='h-4 w-5/6' />
+            </CardContent>
+            <CardFooter className='mt-auto'>
+              <Skeleton className='h-9 w-20' />
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (!notes?.length) {
+    return (
+      <div className='rounded-lg border-2 border-dashed py-20 text-center'>
+        <p className='text-lg text-muted-foreground'>{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className='grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3'>
+      {notes.map((note) => (
+        <NoteCard
+          key={note.id}
+          note={note}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ExampleTab() {
+  const notesQuery = useNotes();
+
+  return (
+    <NotesGrid
+      isLoading={notesQuery.isLoading}
+      notes={notesQuery.data}
+    />
+  );
+}
+
+function PaginationTab() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pageFromUrl = Number(searchParams.get("page") ?? 1);
+  const currentPage = Number.isFinite(pageFromUrl) ? Math.max(1, pageFromUrl) : 1;
+  const paginatedNotesQuery = usePaginatedNotes(currentPage, PAGE_SIZE);
+
+  const totalItems = paginatedNotesQuery.data?.pagination.total ?? 0;
+  const totalPages = paginatedNotesQuery.data?.pagination.totalPages ?? 1;
+  const paginatedNotes = paginatedNotesQuery.data?.data;
+
+  const setPage = (page: number) => {
+    const nextPage = Math.min(Math.max(1, page), totalPages);
+    setSearchParams(nextPage > 1 ? { page: String(nextPage) } : {});
+  };
+
+  return (
+    <div className='space-y-6'>
+      <NotesGrid
+        isLoading={paginatedNotesQuery.isLoading}
+        notes={paginatedNotes}
+        emptyMessage='No notes found for this page.'
+      />
+
+      {!paginatedNotesQuery.isLoading && totalItems > 0 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href='#'
+                onClick={(event) => {
+                  event.preventDefault();
+                  setPage(currentPage - 1);
+                }}
+                aria-disabled={currentPage === 1}
+                className={currentPage === 1 ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+
+            {Array.from({ length: totalPages }).map((_, index) => {
+              const page = index + 1;
+
+              return (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    href='#'
+                    isActive={page === currentPage}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setPage(page);
+                    }}
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              );
+            })}
+
+            <PaginationItem>
+              <PaginationNext
+                href='#'
+                onClick={(event) => {
+                  event.preventDefault();
+                  setPage(currentPage + 1);
+                }}
+                aria-disabled={currentPage === totalPages}
+                className={currentPage === totalPages ? "pointer-events-none opacity-50" : undefined}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+    </div>
+  );
+}
 
 function App() {
+  const location = useLocation();
   const queryClient = useQueryClient();
   const notesQuery = useNotes();
   const createMutation = useCreateNote();
+
+  const activeTab = location.pathname.startsWith("/pagination") ? "pagination" : "example";
 
   const handleGenerateNote = () => {
     createMutation.mutate(generateRandomNote());
@@ -34,10 +187,7 @@ function App() {
       </div>
 
       <div className='flex gap-4'>
-        <Button
-          onClick={handleGenerateNote}
-          // disabled={createMutation.isPending}
-        >
+        <Button onClick={handleGenerateNote}>
           {createMutation.isPending ? (
             <>
               <Spinner className='mr-2 h-4 w-4' />
@@ -55,42 +205,45 @@ function App() {
         </Button>
       </div>
 
-      {notesQuery.isLoading ? (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-          {[...Array(6)].map((_, i) => (
-            <Card
-              key={i}
-              className='flex flex-col h-50'
-            >
-              <CardHeader>
-                <Skeleton className='h-6 w-2/3' />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className='h-4 w-full mb-2' />
-                <Skeleton className='h-4 w-5/6' />
-              </CardContent>
-              <CardFooter className='mt-auto'>
-                <Skeleton className='h-9 w-20' />
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-          {notesQuery.data?.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
-            />
-          ))}
-        </div>
-      )}
+      <Tabs
+        value={activeTab}
+        className='w-full'
+      >
+        <TabsList>
+          <TabsTrigger
+            value='example'
+            asChild
+          >
+            <Link to='/example'>Example</Link>
+          </TabsTrigger>
+          <TabsTrigger
+            value='pagination'
+            asChild
+          >
+            <Link to='/pagination'>Pagination</Link>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      {notesQuery.data?.length === 0 && !notesQuery.isLoading && (
-        <div className='text-center py-20 border-2 border-dashed rounded-lg'>
-          <p className='text-muted-foreground text-lg'>No notes found. Click generate to start!</p>
-        </div>
-      )}
+      <Routes>
+        <Route
+          path='/'
+          element={
+            <Navigate
+              to='/example'
+              replace
+            />
+          }
+        />
+        <Route
+          path='/example'
+          element={<ExampleTab />}
+        />
+        <Route
+          path='/pagination'
+          element={<PaginationTab />}
+        />
+      </Routes>
     </div>
   );
 }

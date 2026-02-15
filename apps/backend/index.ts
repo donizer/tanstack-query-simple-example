@@ -28,9 +28,60 @@ let NOTES: NoteDB[] = [
 const DELAY = 650;
 const sleep = () => new Promise((resolve) => setTimeout(resolve, DELAY));
 
+const MAX_PAGE_SIZE = 100;
+const DEFAULT_PAGE_SIZE = 10;
+
+const parsePositiveInt = (value: unknown) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
 app.get("/api/notes", async (req, res) => {
   await sleep();
-  res.json(NOTES);
+
+  const pageParam = parsePositiveInt(req.query.page);
+  const limitParam = parsePositiveInt(req.query.limit);
+
+  if (pageParam === undefined && limitParam === undefined) {
+    res.setHeader("X-Total-Count", String(NOTES.length));
+    return res.json(NOTES);
+  }
+
+  const limit = Math.min(limitParam ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+  const total = NOTES.length;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const requestedPage = pageParam ?? 1;
+  const page = Math.min(requestedPage, totalPages);
+  const start = (page - 1) * limit;
+  const end = start + limit;
+
+  const data = NOTES.slice(start, end);
+
+  res.setHeader("X-Total-Count", String(total));
+  res.setHeader("X-Page", String(page));
+  res.setHeader("X-Limit", String(limit));
+  res.setHeader("X-Total-Pages", String(totalPages));
+
+  return res.json({
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1,
+    },
+  });
 });
 
 app.post("/api/notes", async (req, res) => {

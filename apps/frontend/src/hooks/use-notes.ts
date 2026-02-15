@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NoteDTO } from "@demo/shared";
-import { fetchNotes, createNote, deleteNote, noteKeys } from "../lib/api";
+import { fetchNotes, fetchNotesPage, createNote, deleteNote, noteKeys } from "../lib/api";
 
 export function useNotes() {
   return useQuery({
     queryKey: noteKeys.all,
     queryFn: fetchNotes,
+  });
+}
+
+export function usePaginatedNotes(page: number, limit: number) {
+  return useQuery({
+    queryKey: noteKeys.paginatedList(page, limit),
+    queryFn: () => fetchNotesPage(page, limit),
   });
 }
 

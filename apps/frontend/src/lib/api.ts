@@ -1,4 +1,5 @@
 import { NoteDTOSchema, type CreateNote } from "@demo/shared";
+import { z } from "zod";
 
 const API_URL = "http://localhost:3001/api/notes";
 
@@ -6,15 +7,43 @@ export const noteKeys = {
   all: ["notes"] as const,
   lists: () => [...noteKeys.all, "list"] as const,
   list: (filters: string) => [...noteKeys.lists(), { filters }] as const,
+  paginatedList: (page: number, limit: number) => [...noteKeys.lists(), { page, limit }] as const,
   details: () => [...noteKeys.all, "detail"] as const,
   detail: (id: string) => [...noteKeys.details(), id] as const,
 };
+
+const PaginatedNotesResponseSchema = z.object({
+  data: NoteDTOSchema.array(),
+  pagination: z.object({
+    page: z.number().int().positive(),
+    limit: z.number().int().positive(),
+    total: z.number().int().nonnegative(),
+    totalPages: z.number().int().positive(),
+    hasNextPage: z.boolean(),
+    hasPreviousPage: z.boolean(),
+  }),
+});
+
+export type PaginatedNotesResponse = z.infer<typeof PaginatedNotesResponseSchema>;
 
 export const fetchNotes = async () => {
   const res = await fetch(API_URL);
   if (!res.ok) throw new Error("Failed to fetch notes");
   const data = await res.json();
   return NoteDTOSchema.array().parse(data);
+};
+
+export const fetchNotesPage = async (page: number, limit: number) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    limit: String(limit),
+  });
+
+  const res = await fetch(`${API_URL}?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch notes page");
+
+  const data = await res.json();
+  return PaginatedNotesResponseSchema.parse(data);
 };
 
 export const createNote = async (note: CreateNote) => {
