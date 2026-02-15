@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { NoteSchema, type Note, type CreateNote } from "@demo/shared";
-import { z } from "zod";
+import { type Note, type CreateNote, NoteDTOSchema, type NoteDTO } from "@demo/shared";
 import { generateRandomNote } from "./utils/noteGenerator";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
@@ -19,10 +18,10 @@ import { Eye } from "lucide-react";
 
 const API_URL = "http://localhost:3001/api/notes";
 
-const fetchNotes = async (): Promise<Note[]> => {
+const fetchNotes = async () => {
   const res = await fetch(API_URL);
   const data = await res.json();
-  return z.array(NoteSchema).parse(data);
+  return NoteDTOSchema.array().parse(data);
 };
 
 const createNote = async (note: CreateNote): Promise<Note> => {
@@ -31,7 +30,7 @@ const createNote = async (note: CreateNote): Promise<Note> => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(note),
   });
-  return NoteSchema.parse(await res.json());
+  return NoteDTOSchema.parse(await res.json());
 };
 
 const deleteNote = async (id: string): Promise<void> => {
@@ -136,7 +135,7 @@ function App() {
 
 export default App;
 
-const CardItem: React.FC<{ note: Note }> = ({ note }) => {
+const CardItem: React.FC<{ note: NoteDTO }> = ({ note }) => {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
@@ -150,11 +149,13 @@ const CardItem: React.FC<{ note: Note }> = ({ note }) => {
     <Card className='flex flex-col group transition-all hover:shadow-md'>
       <CardHeader>
         <CardTitle className='line-clamp-1'>{note.title}</CardTitle>
-        <div className='text-xs text-muted-foreground'>{new Date(note.createdAt).toLocaleString()}</div>
+        <div className='text-xs text-muted-foreground'>{note.formattedDate}</div>
       </CardHeader>
+
       <CardContent className='grow'>
         <p className='text-sm text-balance line-clamp-3'>{note.content}</p>
       </CardContent>
+
       <CardFooter className='pt-0 gap-2'>
         <Dialog>
           <DialogTrigger asChild>
@@ -167,14 +168,17 @@ const CardItem: React.FC<{ note: Note }> = ({ note }) => {
               View
             </Button>
           </DialogTrigger>
+
           <DialogContent className='sm:max-w-150'>
             <DialogHeader>
               <DialogTitle className='text-2xl font-bold'>{note.title}</DialogTitle>
-              <DialogDescription>Created on {new Date(note.createdAt).toLocaleString()}</DialogDescription>
+              <DialogDescription>Created on {note.formattedDate}</DialogDescription>
             </DialogHeader>
+
             <div className='py-6 text-lg whitespace-pre-wrap leading-relaxed border-t mt-4'>{note.content}</div>
           </DialogContent>
         </Dialog>
+
         <Button
           variant='destructive'
           size='sm'
