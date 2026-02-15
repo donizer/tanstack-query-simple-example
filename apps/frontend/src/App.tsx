@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { generateRandomNote } from "./utils/noteGenerator";
@@ -15,7 +16,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useNotes, useCreateNote, usePaginatedNotes } from "./hooks/use-notes";
+import { useInfiniteNotes, useNotes, useCreateNote, usePaginatedNotes } from "./hooks/use-notes";
 import { NoteCard } from "./components/note-card";
 import { noteKeys } from "./lib/api";
 import { NoteDTO } from "@demo/shared";
@@ -159,13 +160,81 @@ function PaginationTab() {
   );
 }
 
+function InfiniteScrollTab() {
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const infiniteQuery = useInfiniteNotes(PAGE_SIZE);
+
+  const notes = useMemo(
+    () => infiniteQuery.data?.pages.flatMap((page) => page.data) ?? [],
+    [infiniteQuery.data?.pages],
+  );
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+
+    if (!sentinel) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+
+        if (entry.isIntersecting && infiniteQuery.hasNextPage && !infiniteQuery.isFetchingNextPage) {
+          void infiniteQuery.fetchNextPage();
+        }
+      },
+      {
+        rootMargin: "200px",
+      },
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [infiniteQuery]);
+
+  return (
+    <div className='space-y-6'>
+      <NotesGrid
+        isLoading={infiniteQuery.isLoading}
+        notes={notes}
+        emptyMessage='No notes found.'
+      />
+
+      <div
+        ref={sentinelRef}
+        className='flex min-h-8 items-center justify-center'
+      >
+        {infiniteQuery.isFetchingNextPage ? (
+          <Badge
+            variant='secondary'
+            className='flex items-center gap-2'
+          >
+            <Spinner className='h-3 w-3' />
+            Loading more...
+          </Badge>
+        ) : !infiniteQuery.hasNextPage && notes.length > 0 ? (
+          <p className='text-sm text-muted-foreground'>You reached the end.</p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const notesQuery = useNotes();
   const createMutation = useCreateNote();
 
-  const activeTab = location.pathname.startsWith("/pagination") ? "pagination" : "example";
+  const activeTab = location.pathname.startsWith("/pagination")
+    ? "pagination"
+    : location.pathname.startsWith("/infinite-scroll")
+      ? "infinite-scroll"
+      : "example";
 
   const handleGenerateNote = () => {
     createMutation.mutate(generateRandomNote());
@@ -222,6 +291,12 @@ function App() {
           >
             <Link to='/pagination'>Pagination</Link>
           </TabsTrigger>
+          <TabsTrigger
+            value='infinite-scroll'
+            asChild
+          >
+            <Link to='/infinite-scroll'>Infinite Scroll</Link>
+          </TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -242,6 +317,10 @@ function App() {
         <Route
           path='/pagination'
           element={<PaginationTab />}
+        />
+        <Route
+          path='/infinite-scroll'
+          element={<InfiniteScrollTab />}
         />
       </Routes>
     </div>

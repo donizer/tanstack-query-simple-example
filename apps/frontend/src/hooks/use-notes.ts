@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NoteDTO } from "@demo/shared";
 import { fetchNotes, fetchNotesPage, createNote, deleteNote, noteKeys } from "../lib/api";
 
@@ -13,6 +13,22 @@ export function usePaginatedNotes(page: number, limit: number) {
   return useQuery({
     queryKey: noteKeys.paginatedList(page, limit),
     queryFn: () => fetchNotesPage(page, limit),
+    placeholderData: (placeholderData) => placeholderData,
+  });
+}
+
+export function useInfiniteNotes(limit: number) {
+  return useInfiniteQuery({
+    queryKey: noteKeys.infiniteList(limit),
+    queryFn: ({ pageParam }) => fetchNotesPage(pageParam, limit),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination.hasNextPage) {
+        return undefined;
+      }
+
+      return lastPage.pagination.page + 1;
+    },
   });
 }
 

@@ -8,6 +8,7 @@ export const noteKeys = {
   lists: () => [...noteKeys.all, "list"] as const,
   list: (filters: string) => [...noteKeys.lists(), { filters }] as const,
   paginatedList: (page: number, limit: number) => [...noteKeys.lists(), { page, limit }] as const,
+  infiniteList: (limit: number) => [...noteKeys.lists(), "infinite", { limit }] as const,
   details: () => [...noteKeys.all, "detail"] as const,
   detail: (id: string) => [...noteKeys.details(), id] as const,
 };
