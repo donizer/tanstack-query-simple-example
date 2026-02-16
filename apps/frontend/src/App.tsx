@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { generateRandomNote } from "./utils/noteGenerator";
@@ -21,6 +21,8 @@ import { NoteCard } from "./components/note-card";
 import { noteKeys } from "./lib/api";
 import { NoteDTO } from "@demo/shared";
 import { NoteEditorPage } from "./components/note-editor-page";
+import { useIntersectionLoader } from "./hooks/use-intersection-loader";
+import { LoadMoreIndicator } from "./components/load-more-indicator";
 
 const PAGE_SIZE = 6;
 
@@ -179,32 +181,18 @@ function InfiniteScrollTab() {
     [infiniteQuery.data?.pages],
   );
 
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-
-    if (!sentinel) {
-      return;
+  const loadMore = useCallback(() => {
+    if (infiniteQuery.hasNextPage && !infiniteQuery.isFetchingNextPage) {
+      void infiniteQuery.fetchNextPage();
     }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && infiniteQuery.hasNextPage && !infiniteQuery.isFetchingNextPage) {
-          void infiniteQuery.fetchNextPage();
-        }
-      },
-      {
-        rootMargin: "200px",
-      },
-    );
-
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
   }, [infiniteQuery]);
+
+  useIntersectionLoader({
+    targetRef: sentinelRef,
+    onIntersect: loadMore,
+    enabled: true,
+    rootMargin: "200px",
+  });
 
   return (
     <div className='space-y-6'>
@@ -218,17 +206,12 @@ function InfiniteScrollTab() {
         ref={sentinelRef}
         className='flex min-h-8 items-center justify-center'
       >
-        {infiniteQuery.isFetchingNextPage ? (
-          <Badge
-            variant='secondary'
-            className='flex items-center gap-2'
-          >
-            <Spinner className='h-3 w-3' />
-            Loading more...
-          </Badge>
-        ) : !infiniteQuery.hasNextPage && notes.length > 0 ? (
-          <p className='text-sm text-muted-foreground'>You reached the end.</p>
-        ) : null}
+        <LoadMoreIndicator
+          isLoading={infiniteQuery.isFetchingNextPage}
+          hasNextPage={infiniteQuery.hasNextPage}
+          hasItems={notes.length > 0}
+          endLabel='You reached the end.'
+        />
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { type UpdateNote as UpdateNoteInput, NoteDTO } from "@demo/shared";
 import {
   createNote,
@@ -77,7 +78,19 @@ const buildOptimisticNote = (newNote: { title: string; content: string }) =>
     },
   );
 
-const applyCreateOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClient>, note: NoteDTO) => {
+const patchNote = (note: NoteDTO, patch: UpdateNoteInput) =>
+  new NoteDTO(
+    {
+      id: note.id,
+      title: patch.title,
+      content: patch.content,
+      status: note.status,
+      createdAt: note.createdAt.toISOString(),
+    },
+    { offline: note.offline },
+  );
+
+const applyCreateOptimisticUpdate = (queryClient: QueryClient, note: NoteDTO) => {
   queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => [note, ...previous]);
 
   queryClient.setQueriesData<InfiniteNotesData>(
@@ -86,7 +99,7 @@ const applyCreateOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClie
   );
 };
 
-const applyDeleteOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClient>, id: string) => {
+const applyDeleteOptimisticUpdate = (queryClient: QueryClient, id: string) => {
   queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => previous.filter((note) => note.id !== id));
 
   queryClient.setQueriesData<InfiniteNotesData>(
@@ -95,7 +108,7 @@ const applyDeleteOptimisticUpdate = (queryClient: ReturnType<typeof useQueryClie
   );
 };
 
-const rollbackFromContext = (queryClient: ReturnType<typeof useQueryClient>, context?: MutationContext) => {
+const rollbackFromContext = (queryClient: QueryClient, context?: MutationContext) => {
   if (!context) {
     return;
   }
@@ -106,7 +119,7 @@ const rollbackFromContext = (queryClient: ReturnType<typeof useQueryClient>, con
   });
 };
 
-const snapshotMutationContext = (queryClient: ReturnType<typeof useQueryClient>): MutationContext => ({
+const snapshotMutationContext = (queryClient: QueryClient): MutationContext => ({
   previousAll: queryClient.getQueryData<NoteDTO[]>(noteKeys.all),
   previousInfinite: queryClient.getQueriesData<InfiniteNotesData>({
     predicate: (query) => isInfiniteListQueryKey(query.queryKey),
@@ -114,26 +127,9 @@ const snapshotMutationContext = (queryClient: ReturnType<typeof useQueryClient>)
 });
 
 const updateNoteInList = (notes: NoteDTO[], id: string, patch: UpdateNoteInput) =>
-  notes.map((note) =>
-    note.id === id
-      ? new NoteDTO(
-          {
-            id: note.id,
-            title: patch.title,
-            content: patch.content,
-            status: note.status,
-            createdAt: note.createdAt.toISOString(),
-          },
-          { offline: note.offline },
-        )
-      : note,
-  );
+  notes.map((note) => (note.id === id ? patchNote(note, patch) : note));
 
-const applyUpdateOptimisticUpdate = (
-  queryClient: ReturnType<typeof useQueryClient>,
-  id: string,
-  patch: UpdateNoteInput,
-) => {
+const applyUpdateOptimisticUpdate = (queryClient: QueryClient, id: string, patch: UpdateNoteInput) => {
   queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => updateNoteInList(previous, id, patch));
 
   queryClient.setQueriesData<InfiniteNotesData>(
@@ -158,22 +154,11 @@ const applyUpdateOptimisticUpdate = (
       return previous;
     }
 
-    return new NoteDTO(
-      {
-        id: previous.id,
-        title: patch.title,
-        content: patch.content,
-        status: previous.status,
-        createdAt: previous.createdAt.toISOString(),
-      },
-      {
-        offline: previous.offline,
-      },
-    );
+    return patchNote(previous, patch);
   });
 };
 
-const invalidateAllNoteQueries = async (queryClient: ReturnType<typeof useQueryClient>) => {
+const invalidateAllNoteQueries = async (queryClient: QueryClient) => {
   await Promise.all([
     queryClient.invalidateQueries({
       queryKey: noteKeys.all,

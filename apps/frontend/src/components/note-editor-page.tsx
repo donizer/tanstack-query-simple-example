@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { useInfiniteNotes, useNote, useUpdateNote } from "@/hooks/use-notes";
 import { useForm, useWatch } from "react-hook-form";
+import { useIntersectionLoader } from "@/hooks/use-intersection-loader";
+import { LoadMoreIndicator } from "@/components/load-more-indicator";
 
 const PAGE_SIZE = 12;
 
@@ -54,29 +56,18 @@ export function NoteEditorPage() {
     });
   }, [selectedNote, form]);
 
-  useEffect(() => {
-    const sidebarEnd = sidebarEndRef.current;
-    if (!sidebarEnd) {
-      return;
+  const loadMore = useCallback(() => {
+    if (infiniteNotesQuery.hasNextPage && !infiniteNotesQuery.isFetchingNextPage) {
+      void infiniteNotesQuery.fetchNextPage();
     }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-
-        if (entry.isIntersecting && infiniteNotesQuery.hasNextPage && !infiniteNotesQuery.isFetchingNextPage) {
-          void infiniteNotesQuery.fetchNextPage();
-        }
-      },
-      { rootMargin: "180px" },
-    );
-
-    observer.observe(sidebarEnd);
-
-    return () => {
-      observer.disconnect();
-    };
   }, [infiniteNotesQuery]);
+
+  useIntersectionLoader({
+    targetRef: sidebarEndRef,
+    onIntersect: loadMore,
+    enabled: true,
+    rootMargin: "180px",
+  });
 
   const handleSave = form.handleSubmit((values) => {
     if (!selectedNoteId || !selectedNote) {
@@ -118,15 +109,7 @@ export function NoteEditorPage() {
             ref={sidebarEndRef}
             className='flex min-h-8 items-center justify-center'
           >
-            {infiniteNotesQuery.isFetchingNextPage ? (
-              <Badge
-                variant='secondary'
-                className='flex items-center gap-2'
-              >
-                <Spinner className='h-3 w-3' />
-                Loading more...
-              </Badge>
-            ) : null}
+            <LoadMoreIndicator isLoading={infiniteNotesQuery.isFetchingNextPage} />
           </div>
         </div>
       </aside>
