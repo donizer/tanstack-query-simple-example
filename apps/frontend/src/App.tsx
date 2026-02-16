@@ -4,6 +4,7 @@ import { LearnLayout } from "@/pages/learn/learn-layout";
 import { BasicNotesPage } from "@/pages/learn/basic-notes-page";
 import { PaginatedNotesPage } from "@/pages/learn/paginated-notes-page";
 import { InfiniteNotesPage } from "@/pages/learn/infinite-notes-page";
+import { ShittyUseEffectPage } from "@/pages/learn/shitty-use-effect-page";
 
 function App() {
   return (
@@ -41,6 +42,10 @@ function App() {
         <Route
           path='infinite'
           element={<InfiniteNotesPage />}
+        />
+        <Route
+          path='shitty-use-effect'
+          element={<ShittyUseEffectPage />}
         />
       </Route>
       <Route

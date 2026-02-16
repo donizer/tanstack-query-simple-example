@@ -12,6 +12,7 @@ const navigationTabs = [
   { label: "Basic Query", value: "basic", to: "/learn/basic" },
   { label: "Pagination", value: "pagination", to: "/learn/pagination" },
   { label: "Infinite Query", value: "infinite", to: "/learn/infinite" },
+  { label: "Terrible useEffect", value: "shitty-use-effect", to: "/learn/shitty-use-effect" },
 ] as const;
 
 export function LearnLayout() {
@@ -74,6 +75,13 @@ export function LearnLayout() {
             asChild
           >
             <Link to='/editor'>Open editor</Link>
+          </Button>
+
+          <Button
+            variant='destructive'
+            asChild
+          >
+            <Link to='/learn/shitty-use-effect'>⚠️ Summon The Legacy Effect Vortex</Link>
           </Button>
         </div>
       </header>
