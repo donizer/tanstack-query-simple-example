@@ -24,9 +24,26 @@ let NOTES: NoteDB[] = [
   },
 ];
 
-// Artificial delay to showcase loading states
-const DELAY = 150;
-const sleep = () => new Promise((resolve) => setTimeout(resolve, DELAY));
+// Artificial delay to showcase loading states.
+// The delay scales with payload size so the relationship is easy to observe.
+const BASE_DELAY_MS = 120;
+const PER_ITEM_DELAY_MS = 6;
+const MAX_DELAY_MS = 4_000;
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getSimulatedDelayMs = (itemCount: number) => {
+  const safeCount = Math.max(0, itemCount);
+  const scaledDelay = BASE_DELAY_MS + safeCount * PER_ITEM_DELAY_MS;
+
+  return Math.min(MAX_DELAY_MS, scaledDelay);
+};
+
+const sleepForItems = async (itemCount: number) => {
+  const delayMs = getSimulatedDelayMs(itemCount);
+  await wait(delayMs);
+  return delayMs;
+};
 
 const MAX_PAGE_SIZE = 100;
 const DEFAULT_PAGE_SIZE = 10;
@@ -46,7 +63,8 @@ const parsePositiveInt = (value: unknown) => {
 };
 
 app.get("/api/notes/meta", async (_req, res) => {
-  await sleep();
+  const delayMs = await sleepForItems(1);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
 
   res.json({
     total: NOTES.length,
@@ -54,13 +72,13 @@ app.get("/api/notes/meta", async (_req, res) => {
 });
 
 app.get("/api/notes", async (req, res) => {
-  await sleep();
-
   const pageParam = parsePositiveInt(req.query.page);
   const limitParam = parsePositiveInt(req.query.limit);
 
   if (pageParam === undefined && limitParam === undefined) {
+    const delayMs = await sleepForItems(NOTES.length);
     res.setHeader("X-Total-Count", String(NOTES.length));
+    res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
     return res.json(NOTES);
   }
 
@@ -78,6 +96,8 @@ app.get("/api/notes", async (req, res) => {
   res.setHeader("X-Page", String(page));
   res.setHeader("X-Limit", String(limit));
   res.setHeader("X-Total-Pages", String(totalPages));
+  const delayMs = await sleepForItems(data.length);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
 
   return res.json({
     data,
@@ -91,7 +111,8 @@ app.get("/api/notes", async (req, res) => {
 });
 
 app.get("/api/notes/:id", async (req, res) => {
-  await sleep();
+  const delayMs = await sleepForItems(1);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
 
   const note = NOTES.find((item) => item.id === req.params.id);
   if (!note) {
@@ -102,7 +123,8 @@ app.get("/api/notes/:id", async (req, res) => {
 });
 
 app.post("/api/notes", async (req, res) => {
-  await sleep();
+  const delayMs = await sleepForItems(1);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
   const result = CreateNoteSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json(result.error);
@@ -112,19 +134,21 @@ app.post("/api/notes", async (req, res) => {
     id: Math.random().toString(36).substring(7),
     createdAt: new Date().toISOString(),
   };
-  NOTES.unshift(newNote); // Add to top
+  NOTES.unshift(newNote); // Add to top);
   res.status(201).json(newNote);
 });
 
 app.delete("/api/notes/:id", async (req, res) => {
-  await sleep();
+  const delayMs = await sleepForItems(1);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
   const { id } = req.params;
   NOTES = NOTES.filter((n) => n.id !== id);
   res.status(204).send();
 });
 
 app.patch("/api/notes/:id", async (req, res) => {
-  await sleep();
+  const delayMs = await sleepForItems(1);
+  res.setHeader("X-Simulated-Latency", `${delayMs}ms`);
 
   const result = UpdateNoteSchema.safeParse(req.body);
   if (!result.success) {

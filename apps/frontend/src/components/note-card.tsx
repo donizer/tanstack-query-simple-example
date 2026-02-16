@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Eye } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useDeleteNote } from "../hooks/use-notes";
+import { useDeleteNote, usePrefetchNote } from "../hooks/use-notes";
 
 interface NoteCardProps {
   note: NoteDTO;
@@ -13,9 +13,10 @@ interface NoteCardProps {
 
 export const NoteCard: React.FC<NoteCardProps> = ({ note }) => {
   const deleteMutation = useDeleteNote();
+  const prefetchNote = usePrefetchNote();
 
   return (
-    <Card className='flex flex-col group transition-all hover:shadow-md'>
+    <Card className='group flex flex-col transition-all hover:shadow-md'>
       <CardHeader>
         <CardTitle className='line-clamp-1'>{note.title}</CardTitle>
         <div className='text-xs text-muted-foreground'>{note.formattedDate}</div>
@@ -25,14 +26,22 @@ export const NoteCard: React.FC<NoteCardProps> = ({ note }) => {
         <p className='text-sm text-balance line-clamp-3'>{note.content}</p>
       </CardContent>
 
-      <CardFooter className='pt-0 gap-2'>
+      <CardFooter className='gap-2 pt-0'>
         <Button
           variant='outline'
           size='sm'
           className='flex items-center gap-2'
           asChild
         >
-          <Link to={`/editor/${note.id}`}>
+          <Link
+            to={`/editor/${note.id}`}
+            onMouseEnter={() => {
+              void prefetchNote(note.id);
+            }}
+            onFocus={() => {
+              void prefetchNote(note.id);
+            }}
+          >
             <Eye className='h-4 w-4' />
             Edit
           </Link>

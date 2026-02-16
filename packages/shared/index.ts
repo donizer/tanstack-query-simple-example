@@ -1,7 +1,11 @@
 import { z } from "zod";
 
+const NoteIdSchema = z.string().brand<"NoteId">();
+
+export type NoteId = z.infer<typeof NoteIdSchema>;
+
 export const NoteSharedSchema = z.object({
-  id: z.string(),
+  id: NoteIdSchema,
   title: z.string().min(1, "Title is required"),
   content: z.string(),
   status: z.enum(["active", "archived"]).default("active"),
@@ -24,7 +28,7 @@ export const UpdateNoteSchema = NoteDBSchema.pick({ title: true, content: true }
 export type UpdateNote = z.infer<typeof UpdateNoteSchema>;
 
 export class NoteDTO implements NoteApp {
-  id: NoteDB["id"];
+  id: NoteId;
   title: NoteDB["title"];
   content: NoteDB["content"];
   createdAt: Date;
@@ -60,4 +64,5 @@ export class NoteDTO implements NoteApp {
     }
   }
 }
+
 export const NoteDTOSchema = NoteDBSchema.transform((note) => new NoteDTO(note));

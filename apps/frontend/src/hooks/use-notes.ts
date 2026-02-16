@@ -1,15 +1,17 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { InfiniteData, QueryKey } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
-import { type UpdateNote as UpdateNoteInput, NoteDTO } from "@demo/shared";
+import { useEffect } from "react";
+import { type NoteId, type UpdateNote as UpdateNoteInput, NoteDTO } from "@demo/shared";
 import {
   createNote,
   deleteNote,
-  fetchNoteById,
-  fetchNotes,
-  fetchNotesMeta,
-  fetchNotesPage,
+  infiniteNotesQueryOptions,
+  noteDetailQueryOptions,
   noteKeys,
+  notesListQueryOptions,
+  notesMetaQueryOptions,
+  paginatedNotesQueryOptions,
   updateNote,
 } from "../lib/api";
 import type { PaginatedNotesResponse } from "../lib/api";
@@ -40,7 +42,7 @@ const addOptimisticNoteToPage = (pageData: PaginatedNotesResponse, note: NoteDTO
   };
 };
 
-const removeOptimisticNoteFromPage = (pageData: PaginatedNotesResponse, id: string): PaginatedNotesResponse => {
+const removeOptimisticNoteFromPage = (pageData: PaginatedNotesResponse, id: NoteId): PaginatedNotesResponse => {
   return {
     ...pageData,
     data: pageData.data.filter((note) => note.id !== id),
@@ -56,7 +58,7 @@ const addOptimisticNoteToInfinite = (data: InfiniteNotesData, note: NoteDTO): In
   };
 };
 
-const removeOptimisticNoteFromInfinite = (data: InfiniteNotesData, id: string): InfiniteNotesData => {
+const removeOptimisticNoteFromInfinite = (data: InfiniteNotesData, id: NoteId): InfiniteNotesData => {
   const pages = data.pages.map((page) => removeOptimisticNoteFromPage(page, id));
 
   return {
@@ -99,7 +101,7 @@ const applyCreateOptimisticUpdate = (queryClient: QueryClient, note: NoteDTO) =>
   );
 };
 
-const applyDeleteOptimisticUpdate = (queryClient: QueryClient, id: string) => {
+const applyDeleteOptimisticUpdate = (queryClient: QueryClient, id: NoteId) => {
   queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => previous.filter((note) => note.id !== id));
 
   queryClient.setQueriesData<InfiniteNotesData>(
@@ -126,10 +128,10 @@ const snapshotMutationContext = (queryClient: QueryClient): MutationContext => (
   }),
 });
 
-const updateNoteInList = (notes: NoteDTO[], id: string, patch: UpdateNoteInput) =>
+const updateNoteInList = (notes: NoteDTO[], id: NoteId, patch: UpdateNoteInput) =>
   notes.map((note) => (note.id === id ? patchNote(note, patch) : note));
 
-const applyUpdateOptimisticUpdate = (queryClient: QueryClient, id: string, patch: UpdateNoteInput) => {
+const applyUpdateOptimisticUpdate = (queryClient: QueryClient, id: NoteId, patch: UpdateNoteInput) => {
   queryClient.setQueryData<NoteDTO[]>(noteKeys.all, (previous = []) => updateNoteInList(previous, id, patch));
 
   queryClient.setQueriesData<InfiniteNotesData>(
@@ -172,55 +174,55 @@ const invalidateAllNoteQueries = async (queryClient: QueryClient) => {
 };
 
 export function useNotes() {
-  return useQuery({
-    queryKey: noteKeys.all,
-    queryFn: fetchNotes,
-  });
+  return useQuery(notesListQueryOptions());
 }
 
-export function useNote(id: string, placeholder?: NoteDTO) {
+export function useNote(id: NoteId | undefined, placeholder?: NoteDTO) {
   return useQuery({
-    queryKey: noteKeys.detail(id),
-    queryFn: () => fetchNoteById(id),
+    ...noteDetailQueryOptions(id!),
     enabled: Boolean(id),
     placeholderData: placeholder,
   });
 }
 
 export function useNotesMeta() {
-  return useQuery({
-    queryKey: noteKeys.meta(),
-    queryFn: fetchNotesMeta,
-  });
+  return useQuery(notesMetaQueryOptions());
 }
 
 export function usePaginatedNotes(page: number, limit: number) {
   return useQuery({
-    queryKey: noteKeys.paginatedList(page, limit),
-    queryFn: () => fetchNotesPage(page, limit),
-    placeholderData: (placeholderData) => placeholderData,
+    ...paginatedNotesQueryOptions(page, limit),
+    placeholderData: keepPreviousData,
   });
 }
 
 export function useInfiniteNotes(limit: number) {
-  return useInfiniteQuery({
-    queryKey: noteKeys.infiniteList(limit),
-    queryFn: ({ pageParam }) => fetchNotesPage(pageParam, limit),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      if (!lastPage.pagination.hasNextPage) {
-        return undefined;
-      }
+  return useInfiniteQuery(infiniteNotesQueryOptions(limit));
+}
 
-      return lastPage.pagination.page + 1;
-    },
-  });
+export function usePrefetchPaginatedNotes({ page, limit, enabled }: { page: number; limit: number; enabled: boolean }) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    void queryClient.prefetchQuery(paginatedNotesQueryOptions(page + 1, limit));
+  }, [enabled, limit, page, queryClient]);
+}
+
+export function usePrefetchNote() {
+  const queryClient = useQueryClient();
+
+  return (id: NoteId) => queryClient.prefetchQuery(noteDetailQueryOptions(id));
 }
 
 export function useCreateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: noteKeys.mutations.create(),
     mutationFn: createNote,
     onMutate: async (newNote) => {
       await queryClient.cancelQueries({ queryKey: noteKeys.all });
@@ -244,6 +246,7 @@ export function useDeleteNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: noteKeys.mutations.delete(),
     mutationFn: deleteNote,
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: noteKeys.all });
@@ -266,7 +269,8 @@ export function useUpdateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, note }: { id: string; note: UpdateNoteInput }) => updateNote(id, note),
+    mutationKey: noteKeys.mutations.update(),
+    mutationFn: ({ id, note }: { id: NoteId; note: UpdateNoteInput }) => updateNote(id, note),
     onMutate: async ({ id, note }) => {
       await queryClient.cancelQueries({ queryKey: noteKeys.all });
 

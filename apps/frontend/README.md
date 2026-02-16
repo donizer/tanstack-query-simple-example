@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# TanStack Query Learning Demo (Frontend)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend is intentionally organized as learning material. The app demonstrates practical TanStack Query patterns with a small Notes API.
 
-Currently, two official plugins are available:
+## Routes
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- `/learn/basic` — baseline `useQuery` list fetch.
+- `/learn/pagination` — paginated query with URL state and next-page prefetch.
+- `/learn/infinite` — infinite query with intersection-observer loading.
+- `/editor/:id?` — note editor that uses detail query + optimistic updates.
 
-## React Compiler
+## Where to look first
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `src/lib/api.ts`
+  - query key factory
+  - query option factories (`queryOptions`, `infiniteQueryOptions`)
+  - API request functions with schema parsing
+- `src/hooks/use-notes.ts`
+  - feature hooks built on option factories
+  - optimistic create/delete/update mutations with rollback
+  - prefetch hooks for pagination and details
+- `src/pages/learn/*`
+  - each page isolates one query pattern
+- `src/pages/learn/learn-layout.tsx`
+  - shell layout, route tabs, and global activity indicators (`useIsFetching`, `useIsMutating`)
 
-## Expanding the ESLint configuration
+## TanStack Query features showcased
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- `QueryClient` defaults (`staleTime`, `gcTime`, retries)
+- structured query keys
+- reusable `queryOptions` / `infiniteQueryOptions`
+- optimistic mutations with rollback
+- targeted invalidation
+- `keepPreviousData` for pagination UX
+- prefetching next pages and details
+- background activity indicators
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Run
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+From monorepo root:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev
+
+# -- OR separately --
+
+pnpm --filter backend dev
+pnpm --filter frontend dev
+
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Open `http://localhost:5173`.
