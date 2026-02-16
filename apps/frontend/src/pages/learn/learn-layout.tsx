@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const navigationTabs = [
   { label: "Basic Query", value: "basic", to: "/learn/basic" },
+  { label: "Suspense Query", value: "suspense", to: "/learn/suspense" },
   { label: "Pagination", value: "pagination", to: "/learn/pagination" },
   { label: "Infinite Query", value: "infinite", to: "/learn/infinite" },
   { label: "Terrible useEffect", value: "shitty-use-effect", to: "/learn/shitty-use-effect" },

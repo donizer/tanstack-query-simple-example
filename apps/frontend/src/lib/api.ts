@@ -37,8 +37,17 @@ const PaginatedNotesResponseSchema = z.object({
 export type PaginatedNotesResponse = z.infer<typeof PaginatedNotesResponseSchema>;
 export type NotesMeta = z.infer<typeof NotesMetaSchema>;
 
-const getJson = async <T>(url: string, errorMessage: string, parser: (input: unknown) => T): Promise<T> => {
-  const response = await fetch(url);
+type FetchOptions = {
+  signal?: AbortSignal;
+};
+
+const getJson = async <T>(
+  url: string,
+  errorMessage: string,
+  parser: (input: unknown) => T,
+  options?: FetchOptions,
+): Promise<T> => {
+  const response = await fetch(url, { signal: options?.signal });
 
   if (!response.ok) {
     throw new Error(errorMessage);
@@ -48,29 +57,34 @@ const getJson = async <T>(url: string, errorMessage: string, parser: (input: unk
   return parser(payload);
 };
 
-export const fetchNotes = async () => {
-  return getJson(API_URL, "Failed to fetch notes", (payload) => NoteDTOSchema.array().parse(payload));
+export const fetchNotes = async (options?: FetchOptions) => {
+  return getJson(API_URL, "Failed to fetch notes", (payload) => NoteDTOSchema.array().parse(payload), options);
 };
 
-export const fetchNotesPage = async (page: number, limit: number) => {
+export const fetchNotesPage = async (page: number, limit: number, options?: FetchOptions) => {
   const params = new URLSearchParams({
     page: String(page),
     limit: String(limit),
   });
 
-  const res = await fetch(`${API_URL}?${params.toString()}`);
+  const res = await fetch(`${API_URL}?${params.toString()}`, { signal: options?.signal });
   if (!res.ok) throw new Error("Failed to fetch notes page");
 
   const data = await res.json();
   return PaginatedNotesResponseSchema.parse(data);
 };
 
-export const fetchNotesMeta = async () => {
-  return getJson(`${API_URL}/meta`, "Failed to fetch notes metadata", (payload) => NotesMetaSchema.parse(payload));
+export const fetchNotesMeta = async (options?: FetchOptions) => {
+  return getJson(
+    `${API_URL}/meta`,
+    "Failed to fetch notes metadata",
+    (payload) => NotesMetaSchema.parse(payload),
+    options,
+  );
 };
 
-export const fetchNoteById = async (id: NoteId) => {
-  return getJson(`${API_URL}/${id}`, "Failed to fetch note", (payload) => NoteDTOSchema.parse(payload));
+export const fetchNoteById = async (id: NoteId, options?: FetchOptions) => {
+  return getJson(`${API_URL}/${id}`, "Failed to fetch note", (payload) => NoteDTOSchema.parse(payload), options);
 };
 
 export const createNote = async (note: CreateNote) => {
@@ -102,31 +116,31 @@ export const updateNote = async (id: NoteId, note: UpdateNote) => {
 export const notesListQueryOptions = () =>
   queryOptions({
     queryKey: noteKeys.all,
-    queryFn: fetchNotes,
+    queryFn: ({ signal }) => fetchNotes({ signal }),
   });
 
 export const noteDetailQueryOptions = (id: NoteId) =>
   queryOptions({
     queryKey: noteKeys.detail(id),
-    queryFn: () => fetchNoteById(id),
+    queryFn: ({ signal }) => fetchNoteById(id, { signal }),
   });
 
 export const notesMetaQueryOptions = () =>
   queryOptions({
     queryKey: noteKeys.meta(),
-    queryFn: fetchNotesMeta,
+    queryFn: ({ signal }) => fetchNotesMeta({ signal }),
   });
 
 export const paginatedNotesQueryOptions = (page: number, limit: number) =>
   queryOptions({
     queryKey: noteKeys.paginatedList(page, limit),
-    queryFn: () => fetchNotesPage(page, limit),
+    queryFn: ({ signal }) => fetchNotesPage(page, limit, { signal }),
   });
 
 export const infiniteNotesQueryOptions = (limit: number) =>
   infiniteQueryOptions({
     queryKey: noteKeys.infiniteList(limit),
-    queryFn: ({ pageParam }) => fetchNotesPage(pageParam, limit),
+    queryFn: ({ pageParam, signal }) => fetchNotesPage(pageParam, limit, { signal }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => {
       if (!lastPage.pagination.hasNextPage) {

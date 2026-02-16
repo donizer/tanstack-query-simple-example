@@ -5,6 +5,7 @@ This frontend is intentionally organized as learning material. The app demonstra
 ## Routes
 
 - `/learn/basic` — baseline `useQuery` list fetch.
+- `/learn/suspense` — route-level `useSuspenseQuery` + error reset boundary pattern.
 - `/learn/pagination` — paginated query with URL state and next-page prefetch.
 - `/learn/infinite` — infinite query with intersection-observer loading.
 - `/editor/:id?` — note editor that uses detail query + optimistic updates.
@@ -34,6 +35,11 @@ This frontend is intentionally organized as learning material. The app demonstra
 - `keepPreviousData` for pagination UX
 - prefetching next pages and details
 - background activity indicators
+- localStorage cache persistence via `PersistQueryClientProvider`
+
+## Query QoL audit
+
+- Detailed inventory: [docs/tanstack-query-qol-inventory.md](docs/tanstack-query-qol-inventory.md)
 
 ## Run
 

@@ -3,6 +3,21 @@ import type { NoteDTO } from "@demo/shared";
 import { fetchManualNotes } from "./fetch-manual-notes";
 import type { ManualNotesQueryResult, ManualQueryStatus, NotesResponseMeta } from "./types";
 
+/**
+ * Manual Query QoL Checklist (Advanced)
+ *
+ * Adds compared to intermediate:
+ * - Abort-based cancellation
+ * - Stale response protection via request id
+ *
+ * Still missing vs TanStack Query:
+ * - Shared cache or cross-component deduplication
+ * - Query invalidation graph and key-based orchestration
+ * - Configurable stale/cache lifetime policies
+ * - Built-in background refetch triggers (focus/reconnect)
+ * - Prefetch and cache-warming APIs
+ */
+
 export const useManualNotesQueryAdvanced = (): ManualNotesQueryResult => {
   const [data, setData] = useState<NoteDTO[]>([]);
   const [error, setError] = useState<string | null>(null);

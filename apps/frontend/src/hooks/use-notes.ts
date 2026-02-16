@@ -6,7 +6,7 @@ import { type NoteId, type UpdateNote as UpdateNoteInput, NoteDTO } from "@demo/
 import {
   createNote,
   deleteNote,
-  infiniteNotesQueryOptions,
+  fetchNotesPage,
   noteDetailQueryOptions,
   noteKeys,
   notesListQueryOptions,
@@ -197,7 +197,22 @@ export function usePaginatedNotes(page: number, limit: number) {
 }
 
 export function useInfiniteNotes(limit: number) {
-  return useInfiniteQuery(infiniteNotesQueryOptions(limit));
+  return useInfiniteQuery({
+    queryKey: noteKeys.infiniteList(limit),
+    queryFn: ({ pageParam, signal }) => fetchNotesPage(pageParam, limit, { signal }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage.pagination.hasNextPage) {
+        return undefined;
+      }
+
+      return lastPage.pagination.page + 1;
+    },
+    select: (data) => ({
+      ...data,
+      flattened: data.pages.flatMap((page) => page.data),
+    }),
+  });
 }
 
 export function usePrefetchPaginatedNotes({ page, limit, enabled }: { page: number; limit: number; enabled: boolean }) {

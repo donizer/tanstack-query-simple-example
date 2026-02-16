@@ -51,7 +51,7 @@ export function ShittyUseEffectPage() {
             <Button
               variant='secondary'
               onClick={query.refetch}
-              disabled={query.isFetching}
+              // disabled={query.isFetching}
             >
               <RefreshCw className='mr-2 h-4 w-4' />
               Refetch manually

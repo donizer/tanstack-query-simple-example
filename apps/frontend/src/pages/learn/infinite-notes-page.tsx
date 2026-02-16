@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { useInfiniteNotes } from "@/hooks/use-notes";
 import { useIntersectionLoader } from "@/hooks/use-intersection-loader";
 import { NotesGrid } from "@/components/notes-grid";
@@ -10,10 +10,7 @@ export function InfiniteNotesPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const infiniteNotesQuery = useInfiniteNotes(PAGE_SIZE);
 
-  const notes = useMemo(
-    () => infiniteNotesQuery.data?.pages.flatMap((page) => page.data) ?? [],
-    [infiniteNotesQuery.data?.pages],
-  );
+  const notes = infiniteNotesQuery.data?.flattened ?? [];
 
   const loadNextPage = useCallback(() => {
     if (infiniteNotesQuery.hasNextPage && !infiniteNotesQuery.isFetchingNextPage) {

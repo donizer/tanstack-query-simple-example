@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { NoteEditorPage } from "@/components/note-editor-page";
 import { LearnLayout } from "@/pages/learn/learn-layout";
 import { BasicNotesPage } from "@/pages/learn/basic-notes-page";
+import { SuspenseNotesPage } from "@/pages/learn/suspense-notes-page";
 import { PaginatedNotesPage } from "@/pages/learn/paginated-notes-page";
 import { InfiniteNotesPage } from "@/pages/learn/infinite-notes-page";
 import { ShittyUseEffectPage } from "@/pages/learn/shitty-use-effect-page";
@@ -34,6 +35,10 @@ function App() {
         <Route
           path='basic'
           element={<BasicNotesPage />}
+        />
+        <Route
+          path='suspense'
+          element={<SuspenseNotesPage />}
         />
         <Route
           path='pagination'
