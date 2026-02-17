@@ -33,7 +33,7 @@ export function InfiniteNotesPage() {
         emptyMessage='No notes available in this feed yet.'
         hasError={infiniteNotesQuery.isError}
         errorMessage={infiniteNotesQuery.error instanceof Error ? infiniteNotesQuery.error.message : undefined}
-        onRetry={() => infiniteNotesQuery.refetch()}
+        onRetry={infiniteNotesQuery.refetch}
       />
 
       <div

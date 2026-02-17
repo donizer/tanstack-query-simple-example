@@ -52,7 +52,7 @@ function SuspenseNotesContent() {
       isLoading={false}
       notes={notesQuery.data}
       emptyMessage='Create a note to see your cache populate and re-render instantly.'
-      onRetry={() => void notesQuery.refetch()}
+      onRetry={notesQuery.refetch}
     />
   );
 }

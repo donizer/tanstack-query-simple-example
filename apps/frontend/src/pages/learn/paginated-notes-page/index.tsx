@@ -87,7 +87,7 @@ export function PaginatedNotesPage() {
         emptyMessage='No notes for this page yet.'
         hasError={paginatedNotesQuery.isError}
         errorMessage={paginatedNotesQuery.error instanceof Error ? paginatedNotesQuery.error.message : undefined}
-        onRetry={() => paginatedNotesQuery.refetch()}
+        onRetry={paginatedNotesQuery.refetch}
       />
 
       {!isPagesLoading && hasPages && (
