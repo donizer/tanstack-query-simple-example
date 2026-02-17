@@ -4,7 +4,7 @@ import { useIntersectionLoader } from "@/hooks/use-intersection-loader";
 import { NotesGrid } from "@/components/notes-grid";
 import { LoadMoreIndicator } from "@/components/load-more-indicator";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 36;
 
 export function InfiniteNotesPage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -22,7 +22,7 @@ export function InfiniteNotesPage() {
     targetRef: sentinelRef,
     onIntersect: loadNextPage,
     enabled: infiniteNotesQuery.hasNextPage,
-    rootMargin: "220px",
+    rootMargin: "800px",
   });
 
   return (

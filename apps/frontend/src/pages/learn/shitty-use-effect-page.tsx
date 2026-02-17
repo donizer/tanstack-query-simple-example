@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { AlertCircle, RefreshCw, Skull } from "lucide-react";
 import { NotesGrid } from "@/components/notes-grid";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -12,23 +11,14 @@ export function ShittyUseEffectPage() {
 
   const naiveApiPreview = useAPIPlaceholders(useManualNotesQueryNaive());
 
-  const queryLikeDebugLine = useMemo(() => {
-    return [
-      `status=${query.status}`,
-      `isLoading=${query.isLoading}`,
-      `isFetching=${query.isFetching}`,
-      `fetchedAt=${query.fetchedAtIso ?? "never"}`,
-      `httpStatus=${query.meta?.statusCode ?? "n/a"}`,
-      `latencyMs=${query.meta?.latencyMs ?? "n/a"}`,
-    ].join(" | ");
-  }, [
-    query.fetchedAtIso,
-    query.isFetching,
-    query.isLoading,
-    query.meta?.latencyMs,
-    query.meta?.statusCode,
-    query.status,
-  ]);
+  const queryLikeDebugLine = [
+    `status=${query.status}`,
+    `isLoading=${query.isLoading}`,
+    `isFetching=${query.isFetching}`,
+    `fetchedAt=${query.fetchedAtIso ?? "never"}`,
+    `httpStatus=${query.meta?.statusCode ?? "n/a"}`,
+    `latencyMs=${query.meta?.latencyMs ?? "n/a"}`,
+  ].join(" | ");
 
   return (
     <section className='space-y-5'>
@@ -38,14 +28,17 @@ export function ShittyUseEffectPage() {
             <Skull className='h-5 w-5' />
             Manual Query With `useEffect` (No TanStack)
           </CardTitle>
+
           <p className='text-sm text-muted-foreground'>
             With TanStack Query you think about what data you want. With this custom hook you have to think about how
             loading, cancellation, errors, status transitions, and refetching work.
           </p>
+
           <p className='text-xs text-muted-foreground'>
             API placeholders pattern: `useAPIPlaceholders(useManualNotesQueryNaive())`
           </p>
         </CardHeader>
+
         <CardContent className='space-y-3'>
           <div className='flex flex-wrap items-center gap-2'>
             <Button
