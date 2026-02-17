@@ -4,12 +4,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAPIPlaceholders, useManualNotesQueryAdvanced, useManualNotesQueryNaive } from "@/hooks/manual-notes-query";
+import { useAPIPlaceholders, useManualNotesQueryAdvanced } from "@/hooks/manual-notes-query";
 
 export function ShittyUseEffectPage() {
   const query = useAPIPlaceholders(useManualNotesQueryAdvanced());
-
-  const naiveApiPreview = useAPIPlaceholders(useManualNotesQueryNaive());
 
   const queryLikeDebugLine = [
     `status=${query.status}`,
@@ -58,7 +56,7 @@ export function ShittyUseEffectPage() {
               <Badge variant='secondary'>Idle</Badge>
             )}
 
-            <Badge variant='outline'>Naive status: {naiveApiPreview.status}</Badge>
+            <Badge variant='outline'>Naive status: {query.status}</Badge>
           </div>
 
           <p className='text-xs text-muted-foreground'>{queryLikeDebugLine}</p>
