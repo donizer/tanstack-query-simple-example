@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { NoteDTO } from "@demo/shared";
 import { fetchManualNotes } from "./fetch-manual-notes";
+import type { NoteDTO } from "@demo/shared";
 import type { ManualNotesQueryInput } from "./types";
 
 /**
