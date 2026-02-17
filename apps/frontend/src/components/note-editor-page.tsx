@@ -8,45 +8,65 @@ import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import { useInfiniteNotes, useNote, useUpdateNote } from "@/hooks/use-notes";
 import { useForm, useWatch } from "react-hook-form";
+import {} from "react-hook-form";
 import { useIntersectionLoader } from "@/hooks/use-intersection-loader";
 import { LoadMoreIndicator } from "@/components/load-more-indicator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { AlertCircle } from "lucide-react";
-import type { NoteId } from "@demo/shared";
+import type { NoteDTO, NoteId } from "@demo/shared";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 12;
 
-export function NoteEditorPage() {
+const NoteEditSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  content: z.string(),
+});
+
+type NoteEditFormValues = z.infer<typeof NoteEditSchema>;
+type PageParam = { id: NoteId };
+
+const useNavigateToFirstNote = (notes: NoteDTO[]) => {
   const navigate = useNavigate();
-  const { id: selectedNoteId } = useParams<{ id: NoteId }>();
-  const sidebarEndRef = useRef<HTMLDivElement | null>(null);
 
-  const infiniteNotesQuery = useInfiniteNotes(PAGE_SIZE);
-  const notes = useMemo(
-    () => infiniteNotesQuery.data?.pages.flatMap((page) => page.data) ?? [],
-    [infiniteNotesQuery.data?.pages],
-  );
-
-  const selectedFromSidebar = notes.find((note) => note.id === selectedNoteId);
-  const noteQuery = useNote(selectedNoteId, selectedFromSidebar);
-  const updateMutation = useUpdateNote();
-  const selectedNote = noteQuery.data;
-
-  const form = useForm<{ title: string; content: string }>({
-    defaultValues: {
-      title: "",
-      content: "",
-    },
-  });
-
-  const title = useWatch({ control: form.control, name: "title" });
+  const { id: selectedNoteId } = useParams<PageParam>();
 
   useEffect(() => {
-    if (!selectedNoteId && notes.length > 0) {
-      navigate(`/editor/${notes[0].id}`, { replace: true });
+    const firstNoteId = notes.at(0)?.id;
+
+    if (!selectedNoteId && firstNoteId) {
+      navigate(`/editor/${firstNoteId}`, { replace: true });
     }
   }, [selectedNoteId, notes, navigate]);
+};
+
+const useNoteForm = (selectedNote: NoteDTO | undefined) => {
+  const { id: selectedNoteId } = useParams<PageParam>();
+  const updateMutation = useUpdateNote();
+  const form = useForm<NoteEditFormValues>({
+    resolver: zodResolver(NoteEditSchema),
+  });
+
+  const handleSave = useCallback(
+    () =>
+      form.handleSubmit((values) => {
+        if (!selectedNoteId || !selectedNote) {
+          return;
+        }
+
+        updateMutation.mutate({
+          id: selectedNoteId,
+          note: {
+            title: values.title,
+            content: values.content,
+          },
+        });
+      }),
+    [form, selectedNote, selectedNoteId, updateMutation],
+  );
 
   useEffect(() => {
     if (!selectedNote) {
@@ -60,6 +80,30 @@ export function NoteEditorPage() {
     });
   }, [selectedNote, form]);
 
+  return { form, handleSave };
+};
+
+export function NoteEditorPage() {
+  const { id: selectedNoteId } = useParams<PageParam>();
+  const infiniteNotesQuery = useInfiniteNotes(PAGE_SIZE);
+  const sidebarEndRef = useRef<HTMLDivElement | null>(null);
+
+  const notes = useMemo(() => {
+    return infiniteNotesQuery.data?.flattened ?? [];
+  }, [infiniteNotesQuery.data?.flattened]);
+
+  const selectedFromSidebar = useMemo(() => {
+    return notes.find((note) => note.id === selectedNoteId);
+  }, [notes, selectedNoteId]);
+
+  const noteQuery = useNote(selectedNoteId, selectedFromSidebar);
+  const updateMutation = useUpdateNote();
+  const selectedNote = noteQuery.data;
+
+  const { form, handleSave } = useNoteForm(selectedNote);
+
+  useNavigateToFirstNote(notes);
+
   const loadMore = useCallback(() => {
     if (infiniteNotesQuery.hasNextPage && !infiniteNotesQuery.isFetchingNextPage) {
       void infiniteNotesQuery.fetchNextPage();
@@ -71,20 +115,6 @@ export function NoteEditorPage() {
     onIntersect: loadMore,
     enabled: true,
     rootMargin: "180px",
-  });
-
-  const handleSave = form.handleSubmit((values) => {
-    if (!selectedNoteId || !selectedNote) {
-      return;
-    }
-
-    updateMutation.mutate({
-      id: selectedNoteId,
-      note: {
-        title: values.title,
-        content: values.content,
-      },
-    });
   });
 
   return (
@@ -116,9 +146,10 @@ export function NoteEditorPage() {
               <Link
                 key={note.id}
                 to={`/editor/${note.id}`}
-                className={`block rounded-md p-3 transition-colors ${
-                  note.id === selectedNoteId ? "bg-muted" : "hover:bg-muted/50"
-                }`}
+                className={cn(
+                  "block rounded-md p-3 transition-colors",
+                  note.id === selectedNoteId ? "bg-muted" : "hover:bg-muted/50",
+                )}
               >
                 <div className='line-clamp-1 text-sm font-medium'>{note.title}</div>
                 <div className='mt-1 line-clamp-2 text-xs text-muted-foreground'>{note.content}</div>
@@ -183,19 +214,10 @@ export function NoteEditorPage() {
                 </div>
 
                 <div className='flex items-center gap-3'>
-                  <Button
-                    type='submit'
-                    disabled={!form.formState.isDirty || updateMutation.isPending || !title?.trim()}
-                  >
-                    {updateMutation.isPending ? (
-                      <>
-                        <Spinner className='mr-2 h-4 w-4' />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save"
-                    )}
-                  </Button>
+                  <SaveNoteButton
+                    isPending={updateMutation.isPending}
+                    form={form}
+                  />
 
                   {updateMutation.isSuccess && !updateMutation.isPending ? (
                     <Badge variant='secondary'>Saved</Badge>
@@ -209,3 +231,26 @@ export function NoteEditorPage() {
     </main>
   );
 }
+
+const SaveNoteButton: React.FC<{
+  isPending: boolean;
+  form: ReturnType<typeof useNoteForm>["form"];
+}> = ({ isPending, form }) => {
+  const title = useWatch({ control: form.control, name: "title" });
+
+  return (
+    <Button
+      type='submit'
+      disabled={!form.formState.isDirty || isPending || !title?.trim()}
+    >
+      {isPending ? (
+        <>
+          <Spinner className='mr-2 h-4 w-4' />
+          Saving...
+        </>
+      ) : (
+        "Save"
+      )}
+    </Button>
+  );
+};
