@@ -8,7 +8,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 
-export const NotesPagination = ({
+export const AppPagination = ({
   currentPage,
   setPage,
   paginationItems,
