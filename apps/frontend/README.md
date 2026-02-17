@@ -5,7 +5,6 @@ This frontend is intentionally organized as learning material. The app demonstra
 ## Routes
 
 - `/learn/basic` — baseline `useQuery` list fetch.
-- `/learn/suspense` — route-level `useSuspenseQuery` + error reset boundary pattern.
 - `/learn/pagination` — paginated query with URL state and next-page prefetch.
 - `/learn/infinite` — infinite query with intersection-observer loading.
 - `/editor/:id?` — note editor that uses detail query + optimistic updates.
