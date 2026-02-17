@@ -37,9 +37,7 @@ const PaginatedNotesResponseSchema = z.object({
 export type PaginatedNotesResponse = z.infer<typeof PaginatedNotesResponseSchema>;
 export type NotesMeta = z.infer<typeof NotesMetaSchema>;
 
-type FetchOptions = {
-  signal?: AbortSignal;
-};
+type FetchOptions = RequestInit;
 
 const getJson = async <T>(
   url: string,
@@ -47,7 +45,7 @@ const getJson = async <T>(
   parser: (input: unknown) => T,
   options?: FetchOptions,
 ): Promise<T> => {
-  const response = await fetch(url, { signal: options?.signal });
+  const response = await fetch(url, options);
 
   if (!response.ok) {
     throw new Error(errorMessage);
@@ -67,7 +65,7 @@ export const fetchNotesPage = async (page: number, limit: number, options?: Fetc
     limit: String(limit),
   });
 
-  const res = await fetch(`${API_URL}?${params.toString()}`, { signal: options?.signal });
+  const res = await fetch(`${API_URL}?${params.toString()}`, options);
   if (!res.ok) throw new Error("Failed to fetch notes page");
 
   const data = await res.json();
