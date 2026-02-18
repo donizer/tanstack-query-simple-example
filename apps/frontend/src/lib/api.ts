@@ -1,24 +1,11 @@
 import { NoteDTOSchema, type CreateNote, type NoteId, type UpdateNote } from "@demo/shared";
 import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
+import { keysFactory } from "./utils";
 
 const API_URL = "http://localhost:3001/api/notes";
 
-export const noteKeys = {
-  all: ["notes"] as const,
-  mutations: {
-    all: () => [...noteKeys.all, "mutation"] as const,
-    create: () => [...noteKeys.mutations.all(), "create"] as const,
-    update: () => [...noteKeys.mutations.all(), "update"] as const,
-    delete: () => [...noteKeys.mutations.all(), "delete"] as const,
-  },
-  meta: () => [...noteKeys.all, "meta"] as const,
-  lists: () => [...noteKeys.all, "list"] as const,
-  paginatedList: (page: number, limit: number) => [...noteKeys.lists(), { page, limit }] as const,
-  infiniteList: (limit: number) => [...noteKeys.lists(), "infinite", { limit }] as const,
-  details: () => [...noteKeys.all, "detail"] as const,
-  detail: (id: NoteId) => [...noteKeys.details(), id] as const,
-};
+export const noteKeys = keysFactory<"notes", NoteId>("notes");
 
 const NotesMetaSchema = z.object({
   total: z.number().int().nonnegative(),
