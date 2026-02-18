@@ -16,6 +16,50 @@ type NotesGridProps = {
   onRetry?: () => void;
 };
 
+export function NotesGrid({
+  isLoading,
+  notes,
+  emptyMessage,
+  hasError = false,
+  errorMessage = "Something went wrong while loading notes.",
+  onRetry,
+}: NotesGridProps) {
+  if (isLoading) {
+    return <NotesGridSkeleton />;
+  }
+
+  if (hasError) {
+    return (
+      <NotesGridError
+        message={errorMessage}
+        onRetry={onRetry}
+      />
+    );
+  }
+
+  if (!notes?.length) {
+    return (
+      <Empty className='py-14'>
+        <EmptyHeader>
+          <EmptyTitle>No notes yet</EmptyTitle>
+          <EmptyDescription>{emptyMessage}</EmptyDescription>
+        </EmptyHeader>
+      </Empty>
+    );
+  }
+
+  return (
+    <div className='grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3'>
+      {notes.map((note) => (
+        <NoteCard
+          key={note.id}
+          note={note}
+        />
+      ))}
+    </div>
+  );
+}
+
 function NotesGridSkeleton() {
   return (
     <div className='grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3'>
@@ -58,49 +102,5 @@ function NotesGridError({ message, onRetry }: { message: string; onRetry?: () =>
         ) : null}
       </AlertDescription>
     </Alert>
-  );
-}
-
-export function NotesGrid({
-  isLoading,
-  notes,
-  emptyMessage,
-  hasError = false,
-  errorMessage = "Something went wrong while loading notes.",
-  onRetry,
-}: NotesGridProps) {
-  if (isLoading) {
-    return <NotesGridSkeleton />;
-  }
-
-  if (hasError) {
-    return (
-      <NotesGridError
-        message={errorMessage}
-        onRetry={onRetry}
-      />
-    );
-  }
-
-  if (!notes?.length) {
-    return (
-      <Empty className='py-14'>
-        <EmptyHeader>
-          <EmptyTitle>No notes yet</EmptyTitle>
-          <EmptyDescription>{emptyMessage}</EmptyDescription>
-        </EmptyHeader>
-      </Empty>
-    );
-  }
-
-  return (
-    <div className='grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3'>
-      {notes.map((note) => (
-        <NoteCard
-          key={note.id}
-          note={note}
-        />
-      ))}
-    </div>
   );
 }
