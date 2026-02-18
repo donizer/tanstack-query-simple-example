@@ -39,7 +39,7 @@ export const queryClient = new QueryClient({
 Коротко: централізовані ключі запитів допомагають уникати помилок і спрощують інвалідацію кешу.
 
 ```ts
-export const keysFactory = <ID extends string = string, T extends string = string>(key: T) => {
+export const keysFactory = <T extends string, ID extends string = string>(key: T) => {
   const keys = {
     all: [key] as const,
     mutations: {
