@@ -1,11 +1,7 @@
 import { NoteDTOSchema, type CreateNote, type NoteId, type UpdateNote } from "@demo/shared";
-import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 import { z } from "zod";
-import { keysFactory } from "./utils";
 
 const API_URL = "http://localhost:3001/api/notes";
-
-export const noteKeys = keysFactory<"notes", NoteId>("notes");
 
 const NotesMetaSchema = z.object({
   total: z.number().int().nonnegative(),
@@ -97,41 +93,3 @@ export const updateNote = async (id: NoteId, note: UpdateNote) => {
   if (!res.ok) throw new Error("Failed to update note");
   return NoteDTOSchema.parse(await res.json());
 };
-
-export const notesListQueryOptions = () =>
-  queryOptions({
-    queryKey: noteKeys.all,
-    queryFn: ({ signal }) => fetchNotes({ signal }),
-  });
-
-export const noteDetailQueryOptions = (id: NoteId) =>
-  queryOptions({
-    queryKey: noteKeys.detail(id),
-    queryFn: ({ signal }) => fetchNoteById(id, { signal }),
-  });
-
-export const notesMetaQueryOptions = () =>
-  queryOptions({
-    queryKey: noteKeys.meta(),
-    queryFn: ({ signal }) => fetchNotesMeta({ signal }),
-  });
-
-export const paginatedNotesQueryOptions = (page: number, limit: number) =>
-  queryOptions({
-    queryKey: noteKeys.paginatedList(page, limit),
-    queryFn: ({ signal }) => fetchNotesPage(page, limit, { signal }),
-  });
-
-export const infiniteNotesQueryOptions = (limit: number) =>
-  infiniteQueryOptions({
-    queryKey: noteKeys.infiniteList(limit),
-    queryFn: ({ pageParam, signal }) => fetchNotesPage(pageParam, limit, { signal }),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      if (!lastPage.pagination.hasNextPage) {
-        return undefined;
-      }
-
-      return lastPage.pagination.page + 1;
-    },
-  });
