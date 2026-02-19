@@ -1,7 +1,7 @@
 // Чистий UI компонент: список нотаток з пагінацією.
 // Не знає про роутинг чи кеш — викликає onSelect / onPageChange.
 
-import { Plus } from "lucide-react";
+import { Dices, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NoteDTO, NoteId } from "@demo/shared";
@@ -11,6 +11,7 @@ interface NotesSidebarProps {
   selectedId?: NoteId;
   onSelect: (id: NoteId) => void;
   onCreate: () => void;
+  onCreateRandom: () => void;
   isCreating: boolean;
   currentPage: number;
   totalPages: number;
@@ -23,6 +24,7 @@ export function NotesSidebar({
   selectedId,
   onSelect,
   onCreate,
+  onCreateRandom,
   isCreating,
   currentPage,
   totalPages,
@@ -36,15 +38,26 @@ export function NotesSidebar({
           <h2 className='text-lg font-semibold'>Нотатки</h2>
           <p className='text-sm text-muted-foreground'>Оберіть нотатку</p>
         </div>
-        <Button
-          type='button'
-          size='sm'
-          onClick={onCreate}
-          disabled={isCreating}
-        >
-          <Plus className='mr-1 h-4 w-4' />
-          Нова
-        </Button>
+        <div className='flex gap-1'>
+          <Button
+            type='button'
+            size='sm'
+            variant='outline'
+            onClick={onCreateRandom}
+            disabled={isCreating}
+          >
+            <Dices className='h-4 w-4' />
+          </Button>
+          <Button
+            type='button'
+            size='sm'
+            onClick={onCreate}
+            disabled={isCreating}
+          >
+            <Plus className='mr-1 h-4 w-4' />
+            Нова
+          </Button>
+        </div>
       </div>
 
       <div className='flex-1 space-y-1 overflow-y-auto p-2'>

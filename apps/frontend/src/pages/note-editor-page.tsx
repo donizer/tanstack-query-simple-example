@@ -102,6 +102,34 @@ export function NoteEditorPage() {
     );
   };
 
+  const addRandomNote = () => {
+    const titles = [
+      "Купити продукти",
+      "Ідея для проєкту",
+      "Нотатка зі зустрічі",
+      "TODO на тиждень",
+      "Рецепт",
+      "Книга для читання",
+      "Фідбек з рев'ю",
+    ];
+    const contents = [
+      "Молоко, хліб, яйця, масло, сир, кава.",
+      "Зробити CLI тулзу для генерації шаблонів.",
+      "Обговорили дедлайни. Наступний спринт — рефакторинг.",
+      "Написати тести, оновити залежності, зробити PR.",
+      "Змішати борошно, цукор та яйця. Випікати 30 хв.",
+      "Clean Code — Robert Martin. Почати з розділу 3.",
+      "Компонент занадто великий — розбити на менші частини.",
+    ];
+    const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+    createNoteMutation.mutate(
+      { title: pick(titles), content: pick(contents) },
+      {
+        onSuccess: (created) => navigate(buildEditorUrl(created.id, currentPage)),
+      },
+    );
+  };
+
   const goToPage = (page: number) => {
     const safe = Math.min(Math.max(1, page), totalPages);
     navigate(buildEditorUrl(selectedNoteId, safe));
@@ -126,6 +154,7 @@ export function NoteEditorPage() {
           selectedId={selectedNoteId}
           onSelect={selectNote}
           onCreate={addNote}
+          onCreateRandom={addRandomNote}
           isCreating={createNoteMutation.isPending}
           currentPage={currentPage}
           totalPages={totalPages}
