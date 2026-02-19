@@ -190,11 +190,17 @@ export function useInfiniteNotes(limit: number) {
     queryKey: noteKeys.infiniteList(limit),
     queryFn: ({ pageParam, signal }) => fetchNotesPage(pageParam, limit, { signal }),
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => (lastPage.pagination.hasNextPage ? lastPage.pagination.page + 1 : undefined),
-    select: (data) => ({
-      ...data,
-      flattened: data.pages.flatMap((page) => page.data),
-    }),
+    getNextPageParam: (lastPage) => {
+      if (lastPage.pagination.hasNextPage) {
+        return lastPage.pagination.page + 1;
+      }
+    },
+    select: (data) => {
+      return {
+        ...data,
+        flattened: data.pages.flatMap((page) => page.data),
+      };
+    },
   });
 }
 ```
@@ -263,10 +269,17 @@ export function useDeleteNoteOptimistic() {
 ```ts
 import { useIsFetching, useIsMutating } from "@tanstack/react-query";
 
-const fetchingNotesCount = useIsFetching({ queryKey: noteKeys.all });
-const mutatingNotesCount = useIsMutating({ mutationKey: noteKeys.mutations.all() });
+const useIsBusy = () => {
+  const fetchingNotesCount = useIsFetching({
+    queryKey: noteKeys.all,
+  });
 
-const isBusy = fetchingNotesCount > 0 || mutatingNotesCount > 0;
+  const mutatingNotesCount = useIsMutating({
+    mutationKey: noteKeys.mutations.all(),
+  });
+
+  return fetchingNotesCount > 0 || mutatingNotesCount > 0;
+};
 ```
 
 ---
