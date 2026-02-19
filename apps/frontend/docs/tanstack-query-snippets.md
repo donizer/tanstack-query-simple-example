@@ -157,11 +157,20 @@ export function usePaginatedNotes(page: number, limit: number) {
 import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-export function usePrefetchPaginatedNotes({ page, limit, enabled }: { page: number; limit: number; enabled: boolean }) {
+type Props = {
+  page: number;
+  limit: number;
+  enabled: boolean;
+};
+
+export function usePrefetchPaginatedNotes({ page, limit, enabled }: Props) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
+
     void queryClient.prefetchQuery(paginatedNotesQueryOptions(page + 1, limit));
   }, [enabled, limit, page, queryClient]);
 }
